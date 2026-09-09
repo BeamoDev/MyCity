@@ -1,0 +1,47 @@
+return {
+	-- STARTER BUILDINGS (Unlocked from start)
+	Shack = {
+		DisplayName = "Shack",
+		Description = "Humble beginnings",
+		Size = "2x2",
+		BuildTime = 8,
+		Cost = 300,
+		Income = 10,
+		Population = 4,
+		ImageId = 79267129610551,
+		Rarity = "Common",
+		RebirthRequired = 0,
+		PopulationRequired = 0,
+		BuildLimit = 50,
+	},
+
+	Bank = {
+		DisplayName = "Bank",
+		Description = "Financial services hub",
+		Size = "3x3",
+		BuildTime = 5,
+		Cost = 500,
+		Income = 10,
+		Population = 8,
+		ImageId = 138719935325526,
+		Rarity = "Common",
+		RebirthRequired = 0,
+		PopulationRequired = 0,
+		BuildLimit = 10,
+	},
+
+	SmallHouse = {
+		DisplayName = "Small House",
+		Description = "Cozy family home",
+		Size = "2x2",
+		BuildTime = 12,
+		Cost = 800,
+		Income = 10,
+		Population = 8,
+		ImageId = 100947802490712,
+		Rarity = "Common",
+		RebirthRequired = 0,
+		PopulationRequired = 0,
+		BuildLimit = 50,
+	},
+}

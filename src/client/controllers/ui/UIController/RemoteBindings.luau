@@ -1,0 +1,16 @@
+return function(Context)
+	require(script.Parent.remotes.Menus)(Context)
+	require(script.Parent.remotes.Weather)(Context)
+	require(script.Parent.remotes.Quests)(Context)
+	require(script.Parent.remotes.CityName)(Context)
+	require(script.Parent.remotes.BuildingInfo)(Context)
+	require(script.Parent.remotes.PromptLabels)(Context)
+	function Context.connectRemoteEvents()
+		Context.connectMenus()
+		Context.connectWeather()
+		Context.connectQuests()
+		Context.connectCityName()
+		Context.connectBuildingInfo()
+		Context.connectPromptLabels()
+	end
+end
