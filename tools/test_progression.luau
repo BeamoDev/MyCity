@@ -118,7 +118,7 @@ tutorial.handleBuildingPlacement(player, "Shack")
 assert(tutorialState.ServerStage.Value == 6)
 tutorial.handleConstructionComplete(player, "Shack")
 assert(tutorialState.ServerStage.Value == 7, "Shack completion stranded the tutorial")
-assert(tutorial.finishTutorial(player) and not tutorial.finishTutorial(player) and rewards == 1)
+assert(tutorial.finishTutorial(player) and not tutorial.finishTutorial(player) and rewards == 0)
 tutorialState.IsInTutorial.Value, tutorialState.ServerStage.Value = true, 0
 player.Data.CurrentBuildings.bank = { Name = "Bank_saved-id" }
 tutorial.resume(player)

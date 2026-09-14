@@ -188,6 +188,9 @@ local service = load("src/server/systems/progression/DailyQuests/init.luau", {
 		end,
 	},
 	os = {
+		clock = function()
+			return monotonic
+		end,
 		time = function()
 			return now
 		end,

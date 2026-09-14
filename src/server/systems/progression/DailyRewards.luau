@@ -117,6 +117,7 @@ function DailyRewardSystem.claimReward(player)
 		dailyRewards.CurrentCycle.Value = currentDay + 1
 	end
 
+	require(script.Parent.Parent.Parent.persistence.PlayerDataModule).savePlayerData(player)
 	return true, message
 end
 
@@ -160,7 +161,7 @@ function DailyRewardSystem.init()
 	local requestUpdateEvent = dailyRewardFolder.RequestUpdate
 
 	requestUpdateEvent.OnServerEvent:Connect(function(player)
-		DailyRewardSystem.updatePlayerUI(player)
+		Guard.run(player, "DailyRewardUpdate", DailyRewardSystem.updatePlayerUI)
 	end)
 
 	task.spawn(function()

@@ -22,18 +22,22 @@ return function(Context)
 			HUD.Visible = false
 		end
 
-		if player.Data.PlayerInfo.Tutorial.IsInTutorial.Value == false then
-			HUD.Parent.Buttons.Visible = true
-			HUD.Parent.Frames.Visible = true
-			HUD.Parent.CashDisplay.Visible = true
-			HUD.Parent.FriendBoost.Visible = true
-		end
-
-		for _, obj in pairs(workspace:GetChildren()) do
-			if obj.Name:match("^Preview_") then
-				obj:Destroy()
+		local data = player:FindFirstChild("Data")
+		local info = data and data:FindFirstChild("PlayerInfo")
+		local tutorial = info and info:FindFirstChild("Tutorial")
+		local active = tutorial and tutorial:FindFirstChild("IsInTutorial")
+		if active and not active.Value and not player:GetAttribute("MyCityIntroActive") then
+			for _, name in { "Buttons", "Frames", "CashDisplay", "FriendBoost" } do
+				local child = State.playerGui:FindFirstChild(name)
+				if child and child:IsA("GuiObject") then
+					child.Visible = true
+				end
 			end
 		end
+
+		-- The placement controller owns and destroys its exact preview instances.
+		local UIController = require(script.Parent.Parent.Parent:WaitForChild("ui"):WaitForChild("UIController"))
+		UIController.clearStuckEffects()
 
 		local playerData = player:FindFirstChild("Data")
 		if playerData then

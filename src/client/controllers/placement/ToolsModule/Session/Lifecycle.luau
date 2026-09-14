@@ -31,6 +31,8 @@ return function(Context)
 		state.motion = nil
 		state.motionTargetAngle = nil
 		state.plotBounds = nil
+		state.placing = false
+		state.nextVisualCheck, state.visualPosition, state.visualAngle = nil, nil, nil
 		state.generation = (state.generation or 0) + 1
 		if wasActive and ownership.activeTool == tool then
 			ownership.activeTool, ownership.activeCleanup = nil, nil
@@ -136,7 +138,17 @@ return function(Context)
 		state.previewBuilding.Parent = previews
 
 		Context.setupControls()
-		Context.updateBuildingVisuals()
+		local owned = plot:FindFirstChild("Land") and plot.Land:FindFirstChild("Owned")
+		if owned then
+			local function landChanged()
+				state.plotBounds, state.nextVisualCheck = nil, nil
+				Context.createTileHighlights()
+				Context.updateBuildingVisuals(true)
+			end
+			state.connections.landAdded = owned.ChildAdded:Connect(landChanged)
+			state.connections.landRemoved = owned.ChildRemoved:Connect(landChanged)
+		end
+		Context.updateBuildingVisuals(true)
 		player:SetAttribute("MyCityPlacementTool", tool.Name)
 	end
 

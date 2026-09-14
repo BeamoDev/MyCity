@@ -49,36 +49,37 @@ local ctx = {
 			failure += 1
 		end,
 	},
-	ReplicatedStorage = { Events = { Movement = { CleanupPreview = {
-		FireClient = function()
-			previews += 1
-		end,
-	} } } },
+	ReplicatedStorage = {
+		Events = { Movement = { CleanupPreview = {
+			FireClient = function()
+				previews += 1
+			end,
+		} } },
+	},
 }
 luau.load(fs.readFile("src/server/systems/progression/RebirthSystem/Reset.luau"))()(ctx)
-luau.load(
-	fs.readFile("src/server/systems/progression/RebirthSystem/Rebirth.luau"),
-	{
-		environment = {
-			script = {
+luau.load(fs.readFile("src/server/systems/progression/RebirthSystem/Rebirth.luau"), {
+	environment = {
+		script = {
+			Parent = {
 				Parent = {
-					Parent = {
-						Parent = node({
-							economy = node({ ShopSystem = {
+					Parent = node({
+						economy = node({
+							ShopSystem = {
 								onPlayerRebirth = function()
 									refreshed += 1
 								end,
-							} }),
+							},
 						}),
-					},
+					}),
 				},
 			},
-			require = function(module)
-				return module
-			end,
 		},
-	}
-)()(ctx)
+		require = function(module)
+			return module
+		end,
+	},
+})()(ctx)
 assert(Config.canRebirth(player, 0))
 ctx.RebirthSystem.performRebirth(player)
 assert(cash.Value == 15000 and rebirths.Value == 1 and success == 1 and refreshed == 1 and previews == 1)
@@ -90,7 +91,8 @@ assert(
 ctx.RebirthSystem.performRebirth(player)
 assert(cash.Value == 15000 and rebirths.Value == 1 and failure == 1, "Requirements must reject an ineligible repeat")
 assert(Config.getRequiredPopulation(1) == 100)
-for level = 50, 100 do
+assert(Config.getRequiredPopulation(2) == 300 and Config.getRequiredPopulation(10) == 16000)
+for level = 1, 400 do
 	assert(Config.getRequiredPopulation(level + 1) > Config.getRequiredPopulation(level), "Requirements plateaued")
 end
 assert(not player.leaderstats:FindFirstChild("Population"))

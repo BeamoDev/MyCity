@@ -22,6 +22,9 @@ local PLAYTIME_MILESTONES = {
 
 -- Initialize player session
 function FunnelAnalytics.initPlayer(player)
+	if playerSessions[player.UserId] then
+		return
+	end
 	playerSessions[player.UserId] = {
 		joinTime = tick(),
 		completedMilestones = {},
@@ -65,7 +68,12 @@ end]]
 -- Playtime milestone tracking
 function FunnelAnalytics.startPlaytimeTracking(player)
 	local connection
+	local nextCheck = 0
 	connection = RunService.Heartbeat:Connect(function()
+		if os.clock() < nextCheck then
+			return
+		end
+		nextCheck = os.clock() + 1
 		if not player.Parent then
 			connection:Disconnect()
 			playerSessions[player.UserId] = nil
@@ -78,14 +86,20 @@ function FunnelAnalytics.startPlaytimeTracking(player)
 			return
 		end
 
+		if os.clock() < (session.retryAt or 0) then
+			return
+		end
 		local playtime = tick() - session.joinTime
 
 		for _, milestone in ipairs(PLAYTIME_MILESTONES) do
 			if playtime >= milestone and not session.completedMilestones[milestone] then
+				local ok =
+					pcall(AnalyticsService.LogCustomEvent, AnalyticsService, player, "PlaytimeMilestone", milestone)
+				if not ok then
+					session.retryAt = os.clock() + 60
+					break
+				end
 				session.completedMilestones[milestone] = true
-
-				-- Log playtime milestone
-				AnalyticsService:LogCustomEvent(player, "PlaytimeMilestone", milestone)
 
 				print(string.format("[Playtime] %s reached %d seconds", player.Name, milestone))
 			end
@@ -151,11 +165,19 @@ end
 ]]
 
 -- Initialize
+local initialized = false
 function FunnelAnalytics.init()
+	if initialized then
+		return
+	end
+	initialized = true
 	Players.PlayerAdded:Connect(function(player)
 		FunnelAnalytics.initPlayer(player)
 	end)
 
+	for _, player in Players:GetPlayers() do
+		FunnelAnalytics.initPlayer(player)
+	end
 	Players.PlayerRemoving:Connect(function(player)
 		playerSessions[player.UserId] = nil
 	end)

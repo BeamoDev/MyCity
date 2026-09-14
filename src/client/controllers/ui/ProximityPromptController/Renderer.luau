@@ -22,16 +22,17 @@ return function(Context)
 		local tweenInfoInstant = TweenInfo.new(0, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
 
 		local promptUI = nil
+		local assets = game:GetService("ReplicatedStorage"):WaitForChild("Assets")
 		local promptTheme = prompt:GetAttribute("Theme")
 		if promptTheme then
-			local themedPromptUI = script.Parent:FindFirstChild(promptTheme)
-			if themedPromptUI then
+			local themedPromptUI = assets:FindFirstChild(promptTheme)
+			if themedPromptUI and themedPromptUI:IsA("BillboardGui") then
 				promptUI = themedPromptUI:Clone()
 			end
 		end
 
 		if promptUI == nil then
-			promptUI = game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Default"):Clone()
+			promptUI = assets:WaitForChild("Default"):Clone()
 		end
 
 		promptUI.Enabled = true

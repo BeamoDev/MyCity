@@ -1,5 +1,8 @@
 # MyCity: current systems and player feedback
 
+**2026-09-10 update:** See [SYSTEM_HARDENING.md](SYSTEM_HARDENING.md) for the latest fixes, approved gameplay changes and verification limits. The dated findings below describe earlier source; client ambient rendering, shared simulation scheduling, income caching, best service coverage, city-preserving Store/rebirth and paid-target recovery now supersede the corresponding recommendations.
+
+
 Reviewed 2026-09-08 against the local standalone MyCity source and the 28 comments supplied in chat. This is a source audit, not a Studio performance capture or an analysis of live retention. Historical complaints are not automatically bugs in the current version.
 
 ## Recommendation

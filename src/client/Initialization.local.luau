@@ -5,6 +5,7 @@ require(ReplicatedStorage:WaitForChild("shared"):WaitForChild("Network")).wait()
 local controllers = script.Parent:WaitForChild("controllers")
 for _, module in
 	{
+		controllers:WaitForChild("world"):WaitForChild("AmbientTrafficController"),
 		controllers:WaitForChild("placement"):WaitForChild("BuildingTools"),
 		controllers.placement:WaitForChild("ExpandHighlight"),
 		controllers:WaitForChild("social"):WaitForChild("ChatTags"),

@@ -1,8 +1,8 @@
+local Scheduler = require(script.Parent.Parent.Parent.Parent.Parent.services.SimulationScheduler)
 -- Timing: focused implementation for ConstructionTimer.
 return function(Context)
 	local State = Context.State
 	local ConstructionTimer = Context.ConstructionTimer
-	local ReplicatedStorage = Context.ReplicatedStorage
 	local UpdateConstructionsEvent = Context.UpdateConstructionsEvent
 
 	function ConstructionTimer.startConstructionTimer(
@@ -63,13 +63,6 @@ return function(Context)
 		timerFlag.Name = "TimerActive"
 		timerFlag.Value = true
 		timerFlag.Parent = constructionSite
-
-		if not isLoading and totalConstructionTime > 0 then
-			local isInTutorial = player.Data.PlayerInfo.Tutorial.IsInTutorial.Value
-			if not isInTutorial then
-				ReplicatedStorage.Events.Notifications.BuildingStarted:FireClient(player, displayName) -- Use displayName
-			end
-		end
 
 		-- Add construction info billboard
 		local constructionInfo = game:GetService("ReplicatedStorage")
@@ -133,21 +126,28 @@ return function(Context)
 			task.defer(ConstructionBuilder.updateBuilderCount, player, activeBuilders)
 		end
 
-		task.spawn(function()
-			Context.updateConstructionBillboard(constructionSite, remainingTime, rarity, displayName)
-
-			while timerValue < totalConstructionTime do
-				local elapsed = task.wait(1)
+		Context.updateConstructionBillboard(constructionSite, remainingTime, rarity, displayName)
+		local timerRecord = activeTimersRef[identifier]
+		local trackerFolder = player.Data:FindFirstChild("CurrentConstructions")
+		local tracker = trackerFolder and trackerFolder:FindFirstChild(identifier)
+		local saved = tracker and ConstructionData.loadConstructionData(tracker.Value)
+		local function step(elapsed)
+			if activeTimersRef[identifier] ~= timerRecord then
+				return false
+			end
+			do
 				if player:GetAttribute("MyCityLeaving") then
 					activeTimersRef[identifier] = nil
-					return
+					return false
 				end
 				if not constructionSite or not constructionSite.Parent then
-					break
+					activeTimersRef[identifier] = nil
+					return false
 				end
 
 				if not constructionSite:FindFirstChild("TimerActive") or not constructionSite.TimerActive.Value then
-					break
+					activeTimersRef[identifier] = nil
+					return false
 				end
 
 				timerValue = timerValue + elapsed
@@ -163,7 +163,7 @@ return function(Context)
 				if currentConstructions then
 					local tracker = currentConstructions:FindFirstChild(identifier)
 					if tracker then
-						local data = ConstructionData.loadConstructionData(tracker.Value)
+						local data = saved or ConstructionData.loadConstructionData(tracker.Value)
 						tracker.Value = string.format(
 							"%.0f,%.2f,%.2f,%.2f,%.1f,%.1f,%.1f,%s,%d,%d,%d,%s",
 							remainingTime,
@@ -184,8 +184,8 @@ return function(Context)
 
 				Context.updateConstructionBillboard(constructionSite, remainingTime, rarity, displayName)
 
-				if remainingTime <= 0 then
-					break
+				if remainingTime > 0 then
+					return true
 				end
 			end
 
@@ -199,15 +199,15 @@ return function(Context)
 			})
 
 			if not constructionSite or not constructionSite.Parent then
-				return
+				return false
 			end
 
 			if not player or not player.Parent then
-				return
+				return false
 			end
 
 			if not plot or not plot.Parent then
-				return
+				return false
 			end
 
 			ConstructionTimer.finishConstruction(
@@ -220,6 +220,12 @@ return function(Context)
 				false,
 				activeBuilders
 			)
-		end)
+			return false
+		end
+		if remainingTime <= 0 then
+			task.defer(step, 0)
+		else
+			timerRecord.cancel = Scheduler.every(1, step)
+		end
 	end
 end

@@ -1,0 +1,244 @@
+﻿
+
+Test   : test_ambient_traffic.luau
+Exit   : 0
+Output : PASS: server sends immutable trips only; client rigid motion, late join, expiry, sanitizing, route caps, 
+         delayed frames and restart cleanup
+
+Test   : test_building_storage.luau
+Exit   : 0
+Output : PASS: delete returns prepared inventory tool; failed creation/missing backpack preserves original and XP; 
+         paid/mutation/level/XP retained
+
+Test   : test_cash_feedback.luau
+Exit   : 0
+Output : PASS: cash initial balance, gain/spend, retargeting, popup bounds, idle frames, hidden/destroyed HUD and 
+         replacement cleanup
+
+Test   : test_city_cache.luau
+Exit   : 0
+Output : PASS: city cache unchanged reads, level/type invalidation, additions/removals, population totals and teardown
+
+Test   : test_civilians.luau
+Exit   : 0
+Output : PASS: civilian count growth/shrink, fair server cap, duplicate start, owner departure/plot reuse; 
+         owned-land/obstacle/gap geometry; KingdomWars animation IDs
+         PASS: walking, idle/stuck recovery, bounded path computation, late-path cancellation
+
+Test   : test_cleanup.luau
+Exit   : 0
+Output : PASS: old signals disconnected, delayed work cancelled, stale callbacks rejected, scope reusable for 
+         replacement HUD
+
+Test   : test_construction_clock.luau
+Exit   : 0
+Output : PASS: construction elapsed time, one coordinate decode, 12 saved fields, delayed completion once, 
+         destroyed/skipped/departing cancellation and zero-time completion
+
+Test   : test_daily_quests.luau
+Exit   : 0
+Output : PASS: 40 objectives, 2000 balanced daily boards, six distinct metrics, no previous-day repeats, bounded 
+         progress, all rewards, stale/duplicate claims and persisted rejoin
+         PASS: server-only event tracking, tutorial exclusion, city/road counts, serialized claims, same-snapshot 
+         cash+marker, failed-save retry safety and online midnight rotation
+
+Test   : test_daily_quest_ui.luau
+Exit   : 0
+Output : PASS: authored quest template cloning, 2-7 sorted layout with preserved spacers, countdown title, exact 
+         green/grey claims, snapshots/claims/day rollover and authored UI preservation
+         PASS: daily reward badges follow authoritative claims, late controls and closed-panel deadlines without 
+         duplicate claim bindings
+
+Test   : test_data_schema.luau
+Exit   : 0
+Output : PASS: template-free new profile, saved cash/items/flags preservation, missing nested defaults, round trip, 
+         malformed record rejection and safe diagnostic failure
+         PASS: failed-data rebirth/quest initialization and plot cleanup return without waiting
+         PASS: legacy timestamp classes normalized; real loader/save/rejoin keeps cash, tools, tutorial and receipt 
+         history
+         PASS: owner-only full fresh start repeats each join while preserving transaction receipts
+
+Test   : test_gamepass_cache.luau
+Exit   : 0
+Output : PASS: 100 repeated ownership requests use one API call; TTL, live purchase, service failure retry, concurrent 
+         lookup, purchase race and cleanup
+
+Test   : test_gameplay_audit.luau
+Exit   : 0
+Output : [WARN]
+         [Quests] Reward deferred for 7 buildings_total
+         PASS: all five quests, exact rewards, duplicate milestones, deferred reward recovery and completed/legacy 
+         rejoin
+         PASS: all seven daily rewards, exact cash/tools, 24h boundaries, missing backpack, cycle rollover and 
+         missed-day streak
+         PASS: 82 catalog entries cash deduction/stock/tool and mapped Robux prompt; locks, empty stock, insufficient 
+         cash, malformed input, bundle reward names
+         PASS: all 82 Robux building grant plans/actions, every configured cash/building bundle, finished/active 
+         skips, refresh dispatch and unknown/missing-intent rejection
+         PASS: quest HUD without optional reward section, latest snapshot wins, completed rejoin hides UI
+         PASS: delayed income loop pays elapsed time and preserves sub-second remainder
+
+Test   : test_group_reward.luau
+Exit   : 0
+Output : PASS: group membership, post-tutorial-only grant, lookup retry, concurrent/duplicate/rejoin protection, 
+         backpack recovery, shared save marker and departure recheck
+
+Test   : test_intro.luau
+Exit   : 0
+Output : PASS: original orbit/icon/Play before readiness, delayed loading catch-up, single Play handoff, owner 
+         tutorial intro, intro cancellation, camera/root/blur restoration and replacement GUI
+
+Test   : test_inventory_restore.luau
+Exit   : 0
+Output : PASS: budgeted 60-tool inventory restore, unchanged inventory/IDs, idempotence, partial-failure and departure 
+         cleanup
+
+Test   : test_join_hierarchy.luau
+Exit   : 0
+Output : PASS: ServerStorage models, stripped client preview copies, unchanged authored templates, idempotent 
+         Workspace.Misc folders
+         PASS: pre-data spawn hold, late roots/respawn during loading, rejected early release, original anchored state 
+         restored and post-Play respawns released
+         PASS: early loading precedes network/data, immediate authored screen, no second camera owner, hidden 
+         HUD/core/custom inventory, late UI suppression and single handoff
+         PASS: buy-area prompt exact hierarchy, single binding, unloaded/tutorial rejection and normal shop opening
+
+Test   : test_loading_performance.luau
+Exit   : 0
+Output : PASS: shared restoration budget across 600 operations, time budget and departure cancellation
+         PASS: 100 restored buildings preserve mirrored placement/IDs/paid status/XP; zero per-building income scans; 
+         missing asset and departure stop safely
+         PASS: active/offline-completed construction restore preserves IDs/paid status/XP/timing; one builder 
+         finalization, no income rescans or fixed delay
+         PASS: 1,000-building stats match strongest coverage formulas with one city enumeration; level-only update, 
+         moved providers and empty/missing plots
+
+Test   : test_migrated_hud.luau
+Exit   : 0
+Output : PASS: construction IDs/ordering/progress/snapshots, code submission/timeout/stale results, audio mute/late 
+         sounds/replacement, builder colors and mobile cleanup
+
+Test   : test_network.luau
+Exit   : 0
+Output : PASS: 81 events + 2 functions; empty startup, idempotence, preserved instances, partial replication, 
+         server-only creation, class mismatch
+         PASS: explicit replication deadline and actionable missing-root startup error
+
+Test   : test_notification_center.luau
+Exit   : 0
+Output : PASS: NotificationCenter authored Message template, preserved layout/transparency, theft messages, dedup, 
+         bounded bursts, fading cleanup and reinit
+         PASS: actual alert, error, theft and code feedback remote bindings reach the shared notification feed
+         PASS: loading/Play messages queue until HUD handoff, then deduplicate through the same feed
+         PASS: income collection does not show a notification
+         PASS: tutorial building-level-up notices are dropped before buffering; normal gameplay still displays them
+
+Test   : test_persistence.luau
+Exit   : 0
+Output : PASS: profile lease contention, expiry, stale writes, release, corrupt data refusal, legacy nesting, 
+         recursive round-trip, duplicate keys
+         PASS: offline transfer confirmed absence, active lease, malformed folder and durable removal replay
+
+Test   : test_placement_lifecycle.luau
+Exit   : 0
+Output : PASS: selling preserves held equip without placement UI/highlights/requests; opening cancels placement; 
+         normal re-equip resumes
+         PASS: shared placement state, re-equip, tutorial highlights/late equip, rejected placement retry, stale 
+         server reply, intro equip gate, cash visibility
+         PASS: instant replay milestones are independent of cosmetic setup
+         PASS: oversized preview clamp and full-footprint owned-land validation
+         PASS: green owned-land highlights restored for all previews, no stacked copies, complete unequip cleanup
+         PASS: Assets placement arrows/base selection and tutorial anchor/beam cloning, binding and cleanup
+
+Test   : test_preview_motion.luau
+Exit   : 0
+Output : PASS: move/rotation easing, rapid retarget/wrap, exact placement targets, frame-rate independence, stationary 
+         transform reuse and network-before-assets bootstrap
+
+Test   : test_progression.luau
+Exit   : 0
+Output : PASS: authoritative tutorial order, Shack completion, legacy progress resume, malformed/legacy code 
+         rejection, code lookup failure, atomic reward marker and retry
+         PASS: fresh-start owner can test codes again, with one redemption per join
+
+Test   : test_purchase_intents.luau
+Exit   : 0
+Output : PASS: intent save failure, prompt failure retry, target replacement refusal, cancellation, bound paid intent 
+         preserved
+
+Test   : test_purchase_recovery.luau
+Exit   : 0
+Output : PASS: unavailable target stays pending, confirmed missing target compensation, preserved metadata, 
+         replay-once, compact completion and durable ambiguous-target block
+
+Test   : test_rebirth_appearance.luau
+Exit   : 0
+Output : PASS: template-only rebirth boosts/unlocks/empty levels, authored card retention and R6/R15 civilian palettes 
+         without template mutation
+         PASS: Assets XP tier particle lookup, clone replacement and source preservation
+
+Test   : test_rebirth_preservation.luau
+Exit   : 0
+Output : PASS: city/inventory untouched, existing cash reset, hidden population eligibility, rejected repeat and 
+         uncapped late requirements
+
+Test   : test_receipts.luau
+Exit   : 0
+Output : PASS: receipt replay, partial save failure, same-server retry, crash/rejoin continuation, unloaded profile 
+         rejection
+         PASS: bound-intent receipt ownership and newer pending-target preservation
+         PASS: durable city-like reward watermark, save failure duplicate prevention, catch-up and stale count 
+         rejection
+
+Test   : test_refactor_regressions.luau
+Exit   : 0
+Output : PASS: shop update/reset events, countdown delta/cleanup, rebirth helper, direct/aliased GUI paths and repeat 
+         repair
+
+Test   : test_satchel_integration.luau
+Exit   : 0
+Output : PASS: single Satchel loader, pre-load/intro input gating, Play handoff, menu close/reopen, disabled state and 
+         stable input bindings
+         PASS: delayed building markers initialize once; destroyed and repeatedly moved tools do not gain duplicate 
+         sessions
+         PASS: bundled Janitor cleans objects and pending promises without another game's Framework
+
+Test   : test_security.luau
+Exit   : 0
+Output : PASS: valid placement, forged tools, malformed/tilted/floating/out-of-bounds/occupied placement, foreign 
+         building, mutation serialization, rate limit, leaving player
+         PASS: plot-edge/vertical/expansion range, distant equip returns tool to Backpack, throttled notice and nearby 
+         equip
+
+Test   : test_simulation_scheduler.luau
+Exit   : 0
+Output : PASS: bounded fair scheduler, elapsed catch-up, yielding non-overlap, cancellation, failure cleanup and one 
+         connection
+
+Test   : test_social_hardening.luau
+Exit   : 0
+Output : PASS: city-name save/filter failure preserves prior name; UTF-8 truncation preserves whole characters
+         PASS: symmetric friend cache, idempotent startup, failure retention and departure refresh
+         PASS: bounded badge retries, concurrent deduplication, successful cache and departure guard
+
+Test   : test_startup.luau
+Exit   : 0
+Output : PASS: 4 startup scenarios (late client, tutorial, delayed server, changed tutorial state); duplicate 
+         initialization suppressed
+
+Test   : test_tool_factory.luau
+Exit   : 0
+Output : PASS: template-free tools, miniature scale/weld contract, script stripping, untouched source, missing visual 
+         fallback, unique IDs and saved metadata round trip
+
+Test   : test_tutorial_client.luau
+Exit   : 0
+Output : PASS: replicated tutorial catch-up, canceled stale stage, touch activation, missing plot, completion 
+         retry/ack, camera ownership and canceled zoom
+
+Test   : test_ui_transitions.luau
+Exit   : 0
+Output : PASS: original popup size tweens, close/reopen cancellation, teardown; no Word Hunt scale or white overlay
+
+
+

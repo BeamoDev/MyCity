@@ -10,6 +10,34 @@ local sessions = {}
 local started = false
 local Guard = require(script.Parent.Parent.systems.security.RequestGuard)
 local beforeSave = nil
+-- Cover one full 180-second lease plus a retry interval after a crashed server.
+local ACQUIRE_TIMEOUT = 190
+local MAX_SERVICE_ERRORS = 5
+
+local function active(player)
+	return player.Parent and not player:GetAttribute("MyCityLeaving")
+end
+
+local function releaseSession(player, session)
+	for attempt = 1, 3 do
+		local ok, err = pcall(Store.release, player.UserId, session.id)
+		if ok then
+			return -- False means ownership is already gone; never release another server's lock.
+		end
+		if attempt < 3 then
+			task.wait(attempt)
+		else
+			warn("[Data] Session release failed for", player.UserId, err)
+		end
+	end
+end
+
+local function waitForRetry(player, seconds)
+	local deadline = os.clock() + seconds
+	while active(player) and os.clock() < deadline do
+		task.wait(math.min(0.25, deadline - os.clock()))
+	end
+end
 
 function PlayerData.isLoaded(player)
 	local session = sessions[player]
@@ -26,42 +54,78 @@ function PlayerData.setBeforeSave(callback)
 end
 
 function PlayerData.loadPlayerData(player)
+	if not player.Parent or player:GetAttribute("MyCityLeaving") then
+		return false
+	end
 	if sessions[player] then
 		return PlayerData.isLoaded(player)
 	end
-	local session = { id = HttpService:GenerateGUID(false), loaded = false, busy = false }
+	local session = {
+		id = HttpService:GenerateGUID(false),
+		loaded = false,
+		busy = false,
+		nextSave = os.clock() + 15 + player.UserId % 30,
+	}
 	sessions[player] = session
 	local ok, record
-	for attempt = 1, 3 do
+	local deadline = os.clock() + ACQUIRE_TIMEOUT
+	local errors = 0
+	player:SetAttribute("MyCityLoadStage", "Profile")
+	while active(player) do
 		ok, record = pcall(Store.acquire, player.UserId, session.id)
 		if ok and record then
 			break
 		end
-		if not player.Parent then
-			return false
+		errors = if ok then 0 else errors + 1
+		player:SetAttribute("MyCityLoadStage", if ok then "WaitingForSession" else "RetryingDataStore")
+		if errors >= MAX_SERVICE_ERRORS or os.clock() >= deadline then
+			break
 		end
-		task.wait(attempt)
+		waitForRetry(player, math.min(if ok then 5 else math.min(2 ^ errors, 10), deadline - os.clock()))
+	end
+	if not player.Parent or player:GetAttribute("MyCityLeaving") then
+		releaseSession(player, session)
+		return false
 	end
 	if not ok or not record then
+		local code = if ok then "LOAD_SESSION" else "LOAD_SERVICE"
 		player:SetAttribute("MyCityLoadFailed", true)
+		player:SetAttribute("MyCityLoadErrorCode", code)
 		warn("[Data] Load refused for", player.UserId, if ok then "Profile is owned by another session" else record)
-		player:Kick("Your city could not be loaded safely. Please rejoin in a moment.")
+		-- A failed request may have acquired our lease before its response was lost.
+		releaseSession(player, session)
+		if active(player) then
+			player:Kick(
+				if ok
+					then "Your city is still open in another server. Close that session, then rejoin. [LOAD_SESSION]"
+					else "City storage is temporarily unavailable. Please try again later. [LOAD_SERVICE]"
+			)
+		end
 		return false
 	end
 	session.record = record
-	local restoreRecord = OwnerReset.apply(player, record)
+	local restoreRecord
+	player:SetAttribute("MyCityLoadStage", "ProfileRestore")
 	local restored, data, stats = xpcall(function()
+		restoreRecord = OwnerReset.apply(player, record)
 		local data, stats = Codec.restore(Schema.Normalize(restoreRecord, player.Name))
 		Migration(player, data, stats)
 		return data, stats
 	end, debug.traceback)
-	if not restored or not player.Parent then
-		player:SetAttribute("MyCityLoadFailed", true)
-		if not restored then
+	if not restored or not player.Parent or player:GetAttribute("MyCityLeaving") then
+		if not restored and player.Parent and not player:GetAttribute("MyCityLeaving") then
+			player:SetAttribute("MyCityLoadFailed", true)
+			player:SetAttribute("MyCityLoadErrorCode", "LOAD_RESTORE")
 			warn("[Data] Restore failed for", player.UserId, data)
 		end
-		pcall(Store.save, player.UserId, session.id, record, true)
-		player:Kick("Your city could not be restored safely. Please try again.")
+		releaseSession(player, session)
+		if restored then
+			data:Destroy()
+			stats:Destroy()
+		end
+		if player.Parent and not player:GetAttribute("MyCityLeaving") then
+			player:Kick("Your saved city needs a loading fix. Please report code LOAD_RESTORE with your username.")
+		end
 		return false
 	end
 	data.Parent = player
@@ -76,7 +140,11 @@ function PlayerData.savePlayerData(player, release)
 	if not session or not session.loaded then
 		return false
 	end
+	local deadline = os.clock() + 25
 	while session.busy do
+		if os.clock() >= deadline then
+			return false
+		end
 		task.wait()
 	end
 	if not session.loaded then
@@ -95,7 +163,12 @@ function PlayerData.savePlayerData(player, release)
 		snapshot.LastSaved = os.time()
 		snapshot = Schema.Normalize(snapshot, player.Name, snapshot.LastSaved)
 		-- Detach mutable receipt/intent tables before UpdateAsync yields.
-		snapshot = HttpService:JSONDecode(HttpService:JSONEncode(snapshot))
+		local encoded = HttpService:JSONEncode(snapshot)
+		if #encoded > 3 * 1024 * 1024 and #encoded > (session.warnedSize or 0) + 128 * 1024 then
+			session.warnedSize = #encoded
+			warn("[Data] Large profile; review retained purchase/history growth:", player.UserId, #encoded, "bytes")
+		end
+		snapshot = HttpService:JSONDecode(encoded)
 		for attempt = 1, 3 do
 			local success, result = pcall(Store.save, player.UserId, session.id, snapshot, release)
 			if success and result then
@@ -112,6 +185,7 @@ function PlayerData.savePlayerData(player, release)
 		return false
 	end)
 	session.busy = false
+	session.nextSave = os.clock() + (if ok and saved then 45 else 5)
 	if release and ok and saved then
 		session.loaded = false
 	end
@@ -127,9 +201,7 @@ function PlayerData.abandon(player)
 		return
 	end
 	session.loaded = false
-	if session.record then
-		pcall(Store.save, player.UserId, session.id, session.record, true)
-	end
+	releaseSession(player, session)
 end
 
 function PlayerData.forget(player)
@@ -143,9 +215,17 @@ function PlayerData.init()
 	started = true
 	task.spawn(function()
 		while true do
-			task.wait(45)
-			for _, player in Players:GetPlayers() do
-				if PlayerData.isLoaded(player) and player:GetAttribute("MyCityLoaded") and not Guard.isBusy(player) then
+			task.wait(1)
+			for player, session in sessions do
+				if
+					session.loaded
+					and not session.busy
+					and os.clock() >= session.nextSave
+					and player:GetAttribute("MyCityLoaded")
+					and not player:GetAttribute("MyCityLeaving")
+					and not Guard.isBusy(player)
+				then
+					session.nextSave = os.clock() + 45
 					task.spawn(PlayerData.savePlayerData, player)
 				end
 			end

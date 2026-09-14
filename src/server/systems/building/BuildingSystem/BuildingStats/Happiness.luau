@@ -11,14 +11,12 @@ return function(Context)
 			return 0
 		end
 		snapshot = snapshot or Context.createSnapshot(plot)
-		local total = 0
-		for _, entry in snapshot.decorations do
-			local distance = (position - entry.position).Magnitude
-			if distance <= DECORATION_HAPPINESS_RANGE then
-				total += DECORATION_HAPPINESS_BOOST * (1 - distance / DECORATION_HAPPINESS_RANGE)
-			end
-		end
-		return math.min(total, 40)
+		return Context.Snapshot.decorationBoost(
+			snapshot,
+			position,
+			DECORATION_HAPPINESS_RANGE,
+			DECORATION_HAPPINESS_BOOST
+		)
 	end
 
 	function Context.calculateHappinessPercent(building, plot, crimePercent, fireSafetyPercent, healthPercent, snapshot)

@@ -6,42 +6,22 @@ return function(Context)
 
 	function Context.showBuildingIncomeAlerts()
 		while true do
-			local buildingsWithIncome = {}
-
-			for _, plot in ipairs(plotsFolder:GetChildren()) do
-				local placedFolder = plot.Buildings:FindFirstChild("Placed")
-				if placedFolder then
-					for _, building in ipairs(placedFolder:GetChildren()) do
-						local configFolder = building:FindFirstChild("Config")
-						if configFolder then
-							local collectedIncome = configFolder:FindFirstChild("CollectedIncome")
-							if collectedIncome and collectedIncome.Value > 0 then
-								table.insert(buildingsWithIncome, building)
-							end
+			-- Reservoir sampling caps temporary storage without copying the entire city's list.
+			local selectedBuildings, seen = {}, 0
+			for _, plot in plotsFolder:GetChildren() do
+				local buildings = plot:FindFirstChild("Buildings")
+				local placed = buildings and buildings:FindFirstChild("Placed")
+				for _, building in (if placed then placed:GetChildren() else {}) do
+					local config = building:FindFirstChild("Config")
+					local income = config and config:FindFirstChild("CollectedIncome")
+					if income and income.Value > 0 then
+						seen += 1
+						local slot = if seen <= 5 then seen else math.random(1, seen)
+						if slot <= 5 then
+							selectedBuildings[slot] = building
 						end
 					end
 				end
-			end
-
-			local maxAlerts = 5
-			local selectedBuildings = {}
-
-			if #buildingsWithIncome > maxAlerts then
-				local tempList = {}
-				for i, building in ipairs(buildingsWithIncome) do
-					tempList[i] = building
-				end
-
-				for i = 1, maxAlerts do
-					if #tempList == 0 then
-						break
-					end
-					local randomIndex = math.random(1, #tempList)
-					table.insert(selectedBuildings, tempList[randomIndex])
-					table.remove(tempList, randomIndex)
-				end
-			else
-				selectedBuildings = buildingsWithIncome
 			end
 
 			for _, building in ipairs(selectedBuildings) do
@@ -57,12 +37,7 @@ return function(Context)
 					if textLabel then
 						local displayIncome = collectedIncome.Value
 
-						-- Apply crime penalty to displayed income for visual feedback
-						if crimePercent then
-							local crimePenalty = Context.calculateCrimePenalty(crimePercent.Value)
-							displayIncome = math.floor(displayIncome * crimePenalty)
-						end
-
+						-- Accrued income already includes the crime penalty.
 						textLabel.Text = Context.formatNumberShort(displayIncome)
 
 						-- Change color based on crime level
@@ -130,6 +105,9 @@ return function(Context)
 							end
 
 							task.wait(3)
+							if not building.Parent or not alertGui.Parent then
+								return
+							end
 
 							local fadeOutText = TweenService:Create(
 								textLabel,

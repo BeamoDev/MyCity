@@ -63,7 +63,7 @@ function ConstructionSkipping.addSkipBuildPrompt(player, constructionSite, activ
 
 			for _, config in ipairs(SKIP_TIME_PRODUCTS) do
 				if actualRemainingTime <= config.Time then
-					require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).prompt(
+					require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).open(
 						player,
 						config.ProductId,
 						{ Kind = "Skip", Identifier = identifier }
@@ -72,7 +72,7 @@ function ConstructionSkipping.addSkipBuildPrompt(player, constructionSite, activ
 				end
 			end
 		else
-			require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).prompt(
+			require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).open(
 				plr,
 				3375062345,
 				{

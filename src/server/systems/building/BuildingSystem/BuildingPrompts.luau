@@ -236,7 +236,7 @@ function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 			local canSteal, ownerOrReason = BuildingStealing.canStealBuilding(plr, building)
 
 			if canSteal then
-				require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).prompt(
+				require(script.Parent.Parent.Parent.Parent.services.MarketPlaceHandler.PurchaseIntents).open(
 					plr,
 					STEAL_BUILDING_PRODUCT_ID,
 					{

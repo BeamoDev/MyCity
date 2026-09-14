@@ -23,6 +23,9 @@ function Ledger.process(player, receipt, makePlan, applyStep)
 			end
 			local plan = makePlan(player, receipt.ProductId, record)
 			if not plan then
+				record.PendingReceipts = record.PendingReceipts or {}
+				record.PendingReceipts[tostring(receipt.ProductId)] = receipt.PurchaseId
+				Data.savePlayerData(player)
 				return false
 			end
 			entry = { ProductId = receipt.ProductId, Plan = plan, Applied = {} }
@@ -52,6 +55,11 @@ function Ledger.process(player, receipt, makePlan, applyStep)
 			end
 		end
 		entry.Complete = true
+		if record.PendingReceipts and record.PendingReceipts[tostring(receipt.ProductId)] == receipt.PurchaseId then
+			record.PendingReceipts[tostring(receipt.ProductId)] = nil
+		end
+		-- Completed receipts need only their immutable identity and acknowledgement.
+		entry.Plan, entry.Applied = nil, nil
 		local intent = record.PurchaseIntents and record.PurchaseIntents[tostring(receipt.ProductId)]
 		if intent and intent.PurchaseId == receipt.PurchaseId then
 			record.PurchaseIntents[tostring(receipt.ProductId)] = nil

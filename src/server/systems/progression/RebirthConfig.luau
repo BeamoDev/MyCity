@@ -9,46 +9,22 @@ RebirthConfig.Multipliers = {
 }
 
 -- Population requirement scaling
-local BASE_POPULATION = 100
-local MAX_POPULATION = 150000
 
 function RebirthConfig.getStartingCash(rebirthLevel)
 	return math.floor(10000 * (1 + rebirthLevel * 0.5))
 end
 
 function RebirthConfig.getRequiredPopulation(rebirthLevel)
-	-- Preserve the original first 50 requirements, then keep growing. A retained
-	-- city must not unlock infinitely many rebirths at the old plateau.
-	if rebirthLevel > 50 then
-		return math.ceil(RebirthConfig.getRequiredPopulation(50) * 1.15 ^ (rebirthLevel - 50))
+	-- Gentle early steps, converging to the former level-50 requirement.
+	local early = { 100, 300, 650, 1200, 2000, 3200, 5000, 7500, 11000, 16000 }
+	rebirthLevel = math.max(1, math.floor(rebirthLevel))
+	if rebirthLevel <= #early then
+		return early[rebirthLevel]
 	end
-	if rebirthLevel <= 1 then
-		return BASE_POPULATION
+	if rebirthLevel <= 50 then
+		return math.floor((16000 + (142000 - 16000) * ((rebirthLevel - 10) / 40) ^ 1.15) / 100) * 100
 	end
-
-	-- Use a logarithmic curve that approaches MAX_POPULATION asymptotically
-	-- This creates fast growth early, then slows down significantly
-	local progress = math.min(rebirthLevel / 50, 1) -- Normalize to 0-1 over 50 rebirths
-
-	-- Use a curve that grows quickly at first then levels off
-	local curve = 1 - math.exp(-3 * progress) -- Exponential approach to 1
-
-	-- Scale between BASE and MAX
-	local required = BASE_POPULATION + (MAX_POPULATION - BASE_POPULATION) * curve
-
-	-- Round to nice numbers
-	if required < 1000 then
-		required = math.floor(required / 10) * 10
-	elseif required < 10000 then
-		required = math.floor(required / 100) * 100
-	elseif required < 50000 then
-		required = math.floor(required / 500) * 500
-	else
-		required = math.floor(required / 1000) * 1000
-	end
-
-	-- Ensure we never exceed max
-	return math.min(required, MAX_POPULATION)
+	return math.ceil(142000 * 1.15 ^ (rebirthLevel - 50))
 end
 
 function RebirthConfig.canRebirth(player, currentRebirths)
@@ -65,7 +41,7 @@ function RebirthConfig.canRebirth(player, currentRebirths)
 		return false, { population = requiredPopulation }, false
 	end
 
-	local meetsPopulation = population.Value >= requiredPopulation
+	local meetsPopulation = population.Value < math.huge and population.Value >= requiredPopulation
 	return meetsPopulation, { population = requiredPopulation }, meetsPopulation
 end
 

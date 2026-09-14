@@ -4,14 +4,23 @@ local Guard = {}
 local states = {}
 local started = false
 local function watch(player)
-	if states[player] then
+	if states[player] or not player.Parent or player:GetAttribute("MyCityLeaving") then
 		return
 	end
 	local state = { roots = {}, connections = {} }
 	states[player] = state
 	local function hold(character)
+		if states[player] ~= state or not player.Parent or player:GetAttribute("MyCityLeaving") then
+			return
+		end
 		local function bind(root)
-			if root.Name ~= "HumanoidRootPart" or not root:IsA("BasePart") or states[player] ~= state then
+			if
+				root.Name ~= "HumanoidRootPart"
+				or not root:IsA("BasePart")
+				or states[player] ~= state
+				or not player.Parent
+				or player:GetAttribute("MyCityLeaving")
+			then
 				return
 			end
 			if state.roots[root] == nil then

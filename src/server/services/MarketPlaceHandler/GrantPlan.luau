@@ -26,11 +26,17 @@ function Plans.create(player, productId, record)
 		end
 		return plan
 	end
+	if record.PendingReceipts and record.PendingReceipts[tostring(productId)] then
+		return nil
+	end
 	local intent = record.PurchaseIntents and record.PurchaseIntents[tostring(productId)]
 	if not intent then
 		return nil
 	end
 	local details = intent.Details
+	if type(details) ~= "table" then
+		return nil
+	end
 	if Products.Shop[productId] and details.Kind == "Building" then
 		return { details }
 	end

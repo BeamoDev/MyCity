@@ -88,6 +88,9 @@ local player = {
 	Name = "Failure",
 	UserId = 1,
 	SetAttribute = function() end,
+	GetAttribute = function()
+		return nil
+	end,
 	Kick = function()
 		kicked = true
 	end,
@@ -96,23 +99,22 @@ local store = {
 	acquire = function()
 		return broken
 	end,
-	save = function(_, _, record, release)
-		assert(record == broken and release == true, "Failed restore overwrote original save")
+	release = function()
 		released = true
+	end,
+	save = function()
+		error("Failed restore attempted to write gameplay")
 	end,
 }
 local ownerResetConfig = { OwnerUserId = 1790165114, ResetProgressEveryJoin = true }
-local ownerReset = luau.load(
-	fs.readFile("src/server/persistence/PlayerDataModule/OwnerReset.luau"),
-	{
-		environment = {
-			script = { Parent = { Parent = { Parent = { config = { TutorialConfig = ownerResetConfig } } } } },
-			require = function(m)
-				return m
-			end,
-		},
-	}
-)()
+local ownerReset = luau.load(fs.readFile("src/server/persistence/PlayerDataModule/OwnerReset.luau"), {
+	environment = {
+		script = { Parent = { Parent = { Parent = { config = { TutorialConfig = ownerResetConfig } } } } },
+		require = function(m)
+			return m
+		end,
+	},
+})()
 local scriptMock = {
 	OwnerReset = ownerReset,
 	ProfileCodec = codec,
@@ -287,3 +289,28 @@ for join = 1, 2 do
 	assert(liveLoader.savePlayerData(owner, true))
 end
 print("PASS: owner-only full fresh start repeats each join while preserving transaction receipts")
+
+-- A successful acquisition returning after PlayerRemoving must release the untouched record.
+local departing = r.Instance.new("Player")
+departing.Name, departing.UserId, departing.Parent = "Departing", 9876, players
+local acquired, releasedOriginal = 0, false
+scriptMock.SessionStore.acquire = function()
+	acquired += 1
+	departing:SetAttribute("MyCityLeaving", true)
+	return durable
+end
+scriptMock.SessionStore.release = function()
+	releasedOriginal = true
+	return true
+end
+scriptMock.SessionStore.save = function()
+	error("Departing load attempted to write gameplay")
+end
+assert(not liveLoader.loadPlayerData(departing))
+assert(
+	acquired == 1 and releasedOriginal and not departing:FindFirstChild("Data") and not liveLoader.isLoaded(departing)
+)
+assert(not liveLoader.loadPlayerData(departing) and acquired == 1)
+print(
+	"PASS: departure during profile acquisition releases original without restoring instances, kicking or starting another load"
+)

@@ -12,6 +12,15 @@ function ToolFactory.create(buildingName, isCollected, level, xp, mutation)
 	if type(buildingName) ~= "string" or not BuildingConfig[buildingName] then
 		return nil
 	end
+	local function integer(value, default, minimum, maximum)
+		value = tonumber(value)
+		if not value or value ~= value or math.abs(value) == math.huge then
+			return default
+		end
+		return math.clamp(math.floor(value), minimum, maximum)
+	end
+	level, xp = integer(level, 1, 1, 100), integer(xp, 0, 0, 9e15)
+	mutation = if type(mutation) == "string" then mutation else nil
 	local definition = BuildingConfig[buildingName]
 	local tool = Instance.new("Tool")
 	tool.Name = buildingName

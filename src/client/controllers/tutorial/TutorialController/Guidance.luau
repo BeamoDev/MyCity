@@ -10,7 +10,7 @@ return function(Context)
 			return
 		end
 
-		local beamTemplate = script.Parent:FindFirstChild("TutorialBeamAnchor")
+		local beamTemplate = Context.ReplicatedStorage:WaitForChild("Assets"):FindFirstChild("TutorialBeamAnchor")
 		if beamTemplate then
 			tutorialState.playerAnchor = beamTemplate:Clone()
 			tutorialState.playerAnchor.Name = player.Name .. "Anchor"
@@ -31,7 +31,7 @@ return function(Context)
 			return
 		end
 
-		local beamTemplate = script.Parent:FindFirstChild("BeamTemplate")
+		local beamTemplate = Context.ReplicatedStorage:WaitForChild("Assets"):FindFirstChild("BeamTemplate")
 		if beamTemplate then
 			tutorialState.beamInstance = beamTemplate:Clone()
 			tutorialState.beamInstance.Attachment1 = tutorialState.anchorAttachment

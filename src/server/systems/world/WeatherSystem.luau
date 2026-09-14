@@ -197,16 +197,21 @@ local function updateClients()
 	end
 end
 
+local started = false
 function DayNightCycle.init()
+	if started then
+		return
+	end
+	started = true
 	Lighting.ClockTime = 14.5
 	currentTimeOfDay = "Day"
 	timeRemaining = DAY_DURATION
 
 	task.spawn(function()
 		while true do
-			task.wait(1)
+			local elapsed = task.wait(1)
 			if not isTransitioning then
-				timeRemaining -= 1
+				timeRemaining = math.max(0, timeRemaining - elapsed)
 				if timeRemaining <= 0 then
 					if currentTimeOfDay == "Day" then
 						transitionToNight()

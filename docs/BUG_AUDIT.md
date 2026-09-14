@@ -1,10 +1,45 @@
 # MyCity backend audit and refactor
 
+## Repeated join refusal recovery (2026-09-14)
+
+The report is a screenshot of a player saying the city-load/rejoin message repeats. The user has no affected username or server error, so the player's specific root cause remains unconfirmed. The current standalone tree has 266 source files.
+
+**Confirmed source defect:** acquisition had three attempts and only 1/2/3-second waits, while the saved session lease lasts 180 seconds. A quick rejoin while the old server is releasing its profile, or after its server crashed, could repeatedly hit the same lease and kick. Acquisition now waits automatically on the loading screen, polling every five seconds through a 190-second window. Successful first attempts remain immediate. Five consecutive service errors use 2/4/8/10-second backoff before refusal. Departure cancels polling within 0.25 seconds; in-flight Roblox requests are not cancellable and may exceed the deadline.
+
+**Failed-load release:** the former one-shot release rewrote the session's working record. SessionStore.release now checks the stored session ID and only removes that lock from the current persisted record, with three attempts on service errors. It also safely cleans up ambiguous acquisitions whose response may have been lost. It preserves gameplay, receipts and a newer server's ownership. Normal loaded-player saves remain unchanged. This uses Roblox's [atomic UpdateAsync cancellation contract](https://create.roblox.com/docs/cloud-services/data-stores#update-data).
+
+**Diagnostics and failure boundaries:** PlayerLifecycle now logs `stage=<stage>` and a traceback, exposes MyCityLoadStage/MyCityLoadErrorCode, and clears both readiness flags before abandoning a failed city load. Optional badge setup runs outside the load-failure boundary. Codes distinguish outstanding sessions, exhausted storage errors, profile restoration, and world restoration stages. No saved building is discarded, guessed, reset or skipped to force a successful join.
+
+Local validation: 40 suites pass. New test_load_recovery executes the real profile loader and SessionStore for delayed release, crashed-server expiry, still-active locks, departure while waiting, temporary/permanent service errors, a committed acquisition with a lost response, release retries, failed restoration, working-record mutation and stale-release protection. Expanded test_shutdown verifies failed Buildings/Quests stages, revoked readiness, traceback reporting, optional badge failure isolation and normal/canceled shutdown saving. All 266 source and 45 tooling files compile; path/helper checks pass.
+
+Integration remains unverified. Sync `ServerScriptService.server.persistence.PlayerDataModule` with its updated `SessionStore` child and `ServerScriptService.server.bootstrap.PlayerLifecycle` together; restart into fresh servers. Test an ordinary returning player switching servers before the old save finishes, and an interrupted join followed by rejoin. Confirm inventory, placed buildings, constructions, cash and receipts remain intact. If the report persists, collect the new kick code and the matching `[Data]` or `[Lifecycle]` server warning with user ID and traceback. A missing authored building/template or malformed saved record still requires its specific repair; repeated rejoining cannot repair that data or asset. No production storage was accessed or release published here.
+
+## Startup/shutdown race fix (2026-09-10)
+
+The supplied Studio log showed PlayerLifecycle registering BindToClose after yielding bootstrap work, when Play was already stopping. New `server/bootstrap/Shutdown.luau` registers once before SpawnGuard, network/assets or system initialization. It marks closure/departure immediately and accepts the lifecycle save callback before any player load starts. A bootstrap resumed during closure returns; preview preparation cancels between work slices. An already-closing Script Sync session refuses startup safely.
+
+PlayerLifecycle is idempotent, rejects queued departing/closing joins, checks cancellation after yielding load stages and abandons partial restorations without a late kick or partial save. A DataStore acquisition returning after departure releases the original record before creating player data. Spawn holds reject late departing-character events, and plot relocation verifies the current character/departure status after its bounded root wait. Normal loaded players retain the shared PlayerRemoving/BindToClose save path.
+
+The separate Studio message `Character cannot be changed as Player ... is being removed` had no source traceback. Exported source contains no LoadCharacter call or direct Player.Character assignment; these guards fix late gameplay work, but an engine or unexported-script origin cannot be confirmed from that message alone. Do not claim that message reproduced or resolved in Studio without a fresh Play/Stop test.
+
+Validation: 39 local test suites pass; all 266 source and 44 tool files compile; path/helper audits pass. New test_shutdown executes early registration, already-closing refusal, stop-during-bootstrap, cancellation while data is loading, queued join refusal and one normal shutdown save. Data-schema tests execute a departure during successful profile acquisition and verify unchanged-record release. Studio stop-during-load remains unverified.
+
+Sync the new ModuleScript `ServerScriptService.server.bootstrap.Shutdown` with the updated server tree, then start a fresh Play session. The read-only audit and migration module-class table include it.
+
+
+
+## Latest hardening result ? 2026-09-10
+
+See [SYSTEM_HARDENING.md](SYSTEM_HARDENING.md) for the complete current per-system ledger. Earlier dated findings below are historical where the ledger supersedes them. This pass fixes paid-target compensation, durable ambiguity blocking/feedback, destructive deletion, the early rebirth jump, service-provider selection, recurring simulation work, income rescans, ambient server replication, stale placement responses, daily claim ordering, name failures, social caches and recoverable like cash rewards. It adds six runtime modules and six focused test suites; all source roots must sync together.
+
+Unresolved limits are explicit: ambiguous historical receipts remain pending by user choice; foreign active owner sessions defer transfers; permanent replay-protection history needs archival at extreme scale; authored assets, approved audio, live storage/commerce and device/performance evidence require Studio or published testing. No claim of universal bug freedom or 100/100 production optimization is supported.
+
+
 Latest hierarchy/join follow-up (2026-09-09): replaced the removed NotificationsFrame/StoleAlert dependencies with authored HUD.NotificationCenter.Template; routed missing income/error/code/like feedback into that feed. Updated server building assets to ServerStorage.Buildings, all plots to Workspace.Plots, and temporary objects to Workspace.Misc. Added generated client-only placement templates, centralized buy-area prompt binding, early loading/hidden inventory before network waits and a server spawn hold until Play/UI handoff. The user dropped nuke work; no nuke system was present in current or original sources. See AGENTS.md and MIGRATION.md for the latest mapping. These updates are locally tested, not Studio-verified.
 
 Latest performance pass (2026-09-09): removed fixed per-building prompt waits and per-restored-building income rescans; added a shared restoration frame budget, grouped plot-stat provider snapshots, direct verified owner lookup, successful game-pass query caching, single builder finalization during restore, and fewer server GUI/route updates. See LOADING_PERFORMANCE.md for local operation-count evidence and remaining engine profiling. Earlier quadratic-scan findings below describe the pre-optimization source; service-provider selection and authored traffic/model costs remain outstanding. The preceding gameplay audit fixed elapsed income accrual; earlier fixed-tick descriptions are historical.
 
-Latest rebirth change: city, construction, inventory and land now survive rebirth; the user retained the existing cash reset. Confirmation states the outcome. Schema 5 moves Population to Data.PlayerInfo.Population and leaves only Cash/Rebirths in leaderstats. Source consumers and migration tests are updated. Requirements grow beyond rebirth 50 rather than allowing an infinite chain at the old population plateau. Earlier descriptions of destructive rebirth below describe the previous implementation. Permanent Delete, receipt/transfer recovery, income timing and service coverage remain separate outstanding work.
+Latest rebirth change: city, construction, inventory and land now survive rebirth; the user retained the existing cash reset. Confirmation now uses authored reward cards only; the later template-only follow-up removes its generated outcome summary. Schema 5 moves Population to Data.PlayerInfo.Population and leaves only Cash/Rebirths in leaderstats. Source consumers and migration tests are updated. Requirements grow beyond rebirth 50 rather than allowing an infinite chain at the old population plateau. Earlier descriptions of destructive rebirth below describe the previous implementation. Permanent Delete, receipt/transfer recovery, income timing and service coverage remain separate outstanding work.
 
 Latest shop follow-up: the user confirmed both ItemTemplate and PurchaseFrame under ReplicatedStorage.Assets.Shop. ShopController/Lifecycle now waits for both there before binding shop updates, fixing the previously unresolved template lookup in local source. The existing regression suite verifies these exact template references. Studio play verification remains pending.
 
@@ -36,7 +71,7 @@ Reviewed 2026-09-08 against the standalone local source. Scope: all 61 exported 
 These are not claims that every possible gameplay bug is fixed.
 
 1. **Studio migration and integration are unverified.** Run MIGRATION.md and the hierarchy audit. Authored dimensions, UI names, ModuleScript classes, enabled legacy scripts and TopbarPlus cannot be proven from source. Hidden HUD/loading/tool/admin implementations were not available locally. The local chat relay only forwards its author's commands; authorization in an external ControlPanel server remains outside this export.
-2. **Purchase recovery has explicit unresolved cases.** A legacy receipt may have no persisted target. A steal may target an item already sold/deleted/completed or an owner with an active lease on another server. These remain NotProcessedYet; there is no cross-server transfer worker or invented compensation. An intent stranded across a disconnect before the platform confirms/cancels its prompt can block a later prompt of the same product. Reconcile against actual receipt history rather than discarding it blindly.
+2. **Purchase recovery has explicit unresolved cases.** A legacy receipt may have no persisted target. A steal may target an item already sold/deleted/completed or an owner with an active lease on another server. These remain NotProcessedYet; there is no cross-server transfer worker or invented compensation. An intent stranded across a disconnect before the platform confirms/cancels its prompt can block a later prompt of the same product. See the latest hardening ledger for new saved-descriptor compensation and durable ambiguity blocking. Reconcile against actual receipt history rather than discarding it blindly.
 3. **Old servers ignore new session locks.** Drain old SetAsync writers during deployment. A blind rollback to old serialization can drop new metadata. Real DataStore throttling, lease contention, shutdown deadlines and receipt retry timing need dedicated tests.
 4. **Persistence metadata grows.** Receipt IDs, transfer markers and redemption records remain for replay protection. Monitor profile size before adding high-volume products; introduce archival only with a design that preserves deduplication.
 5. **Authored placement needs play coverage.** Server checks cover bounds/height/yaw/overlap, but grid phase, special buildings, rotations on Plot5-8 and all template sizes have not been verified in Studio.
@@ -234,3 +269,51 @@ Removed two fragile dependencies: quest presentation inside authored HUD.Frames 
 Tests now exercise actual button callbacks plus Navigation rather than replacing openUIFrame with a fake that always succeeds. Hidden/collapsed Frames, disabled input, close/reopen, late bindings, six loading cards, claim processing and generated-screen teardown pass, as do placement/transition regressions and compile/path/helper checks. This addresses source-level failure paths; exact Studio cause and actual on-screen appearance are not yet verified.
 
 Civilian pace adjustment: reduced configured WalkSpeed from 3 to 1.5 studs/second per user request; routing and stuck recovery are unchanged.
+
+## Group reward timing and duplication fix (2026-09-09)
+
+The previous load-time grant could give PoliceStation during the tutorial and lose its suppressed notification; a redundant rank request and obsolete inventory-name check could also prevent the grant. Reward execution now follows ClientReady with server-side completed-tutorial/membership checks. Removed the eager loading/tutorial-finish grants, added request/in-flight guarding, transient lookup/busy-backpack retries and an immediate profile save containing both tool and claimed marker. The notification reads 'Group reward: Police Station'. Existing claims are respected, including after rejoin; owner fresh-profile testing keeps its configured resets.
+
+Group reward regressions, progression/startup/cleanup tests and compilation/helper checks pass locally. Real Roblox group membership, saved inventory and NotificationCenter display still require Studio/live verification.
+
+## Authored quests UI replaces generated screen (2026-09-09)
+
+Per user correction, the UI now binds HUD.Frames.Quests.Frame and clones its Template directly into the Content ScrollingFrame, LayoutOrder 1-6. Top and Bottom remain padding frames at orders 0/7; their content and sizing are preserved. Header text shows Daily Quests (19H 20M), counting down to the daily reset; Template.Reward displays cash. ClaimStyle owns exact green RGB(31,106,40)/#44ff0b/#aeff45 restoration and disabled grey states. Duplicate Progress bar/text names are resolved by class. Widgets and the generated ScreenGui code are deleted; cleanup retains authored UI and removes only cloned quest rows.
+
+Local authored-hierarchy mock tests cover cloning/order/spacers, header time, rewards, claim transitions/retry and teardown. Required core checks, placement/transition regressions, compile and path/helper audits pass. Actual Studio hierarchy dimensions and visual behavior still require a play test.
+
+
+Quest wording update: incomplete claim buttons now read Locked; grey styling and eligibility rules are unchanged.
+
+## UIController template relocation
+
+Rebirth card lookups now use ReplicatedStorage.Assets.IncomeBoostTemp, PopulationBoostTemp and BuildingTemp; weather clones ReplicatedStorage.Assets.WeatherTemplate. Removed the old UIController-relative asset references and guarded missing weather templates/icons. The authored quest template stays inside its Quests frame. Rebirth regression checks and source compilation pass; Studio rendering is pending.
+
+## Remaining template relocation audit (2026-09-09)
+
+Updated old ToolsModule assets ArrowsGUI/BaseSelection, TutorialController assets TutorialBeamAnchor/BeamTemplate, and XP SparklesGold/SparklesBlue/SparklesPink to direct ReplicatedStorage.Assets lookups. Named proximity prompt themes also resolve from Assets. The exported game code now has no remaining script-child cosmetic template lookups. Module requires and Satchel module/style references remain intentional.
+
+No script-owned ItemName or PlacementHighlight lookup exists in current source. ItemName is used inside live sell/shop UI; placement land highlights are generated SelectionBoxes. This also matches the inspected original sell/placement backup for ItemName/ArrowsGUI/BaseSelection. Local cloned-asset, XP-tier, placement/tutorial and required core checks plus compile/path/helper audits pass; authored Studio behavior remains pending.
+
+## Daily quest priority and reserved padding orders
+
+Cards now sort claimable first, remaining quests by descending progress percentage, then claimed last. Ties retain server board order. Card/placeholder LayoutOrder is restricted to 2-7; Top/Bottom padding uses 1/100 per user correction. Server quest order and claim IDs stay intact. The local quest UI regression suite passes mixed-state ordering, percentage comparisons, ties and padding bounds.
+
+## Train flicker, ambient vehicles and join work (2026-09-09)
+
+The old train code tweened PrimaryPart while separately calling SetPrimaryPartCFrame(primary.CFrame) every Heartbeat, and cloned original scripts/physics settings. Replaced that conflicting/incomplete movement setup with anchored, sanitized model clones and one whole-model PivotTo writer. Route occupancy prevents identical trains overlapping on a lane. The old car implementation also leaked completed-vehicle connection references, changed orientation on the first movement tick and steered lane offsets back to the lane center. Shared AmbientTraffic replaces both implementations with stable routes and one scheduler; no per-vehicle connections or uncancelled spawn loops remain.
+
+Cold-start preview preparation no longer forces a frame delay per building template. It batches work under model/time limits and yields during large detached sanitization passes. Inventory restoration now shares the city work budget and cleans staged tools on failure/cancellation rather than leaving detached instances. These changes preserve profile/receipt safety and inventory metadata.
+
+Full local regression suite, compilation and path/helper checks pass. New tests cover rigid carriage spacing, one transform per frame, template preservation, car/train caps, route occupancy, large frame delays and restart cleanup. A mocked 24-template startup uses three frame waits; this is not a measured production load-time claim. Actual flashing cause/visual resolution and performance need Studio profiling; external Studio scripts and duplicate unsynced runtime systems are outside this source verification.
+
+
+## Claim badges and template-only rebirth confirmation (2026-09-09)
+
+ConstructionTimer no longer emits BuildingStarted notices and NotificationController no longer binds or styles that notification. The unused network entry is retained for compatibility; construction tracking/progress and completion notices remain active.
+
+UIController.ClaimAlerts binds the authored Alerts child (plural) of DailyReward and Quests GuiButtons under HUD.Buttons, including late-replicating badges. Both initialize hidden. Daily rewards use the authoritative canClaim/currentDay/claimedDays snapshot; the eligibility deadline keeps requesting updates while the panel is closed, with request throttling. A successful claim's snapshot clears the badge. Quests show the badge for any completed, unclaimed, non-pending quest; rejected claims restore it, claimed snapshots clear it, and expired boards hide it and request a fresh board even while closed. HUD connection scope owns the listeners/timers. No badge UI is created.
+
+RebirthRewards now clones only Assets.IncomeBoostTemp, PopulationBoostTemp and BuildingTemp (and optional XPBoostTemp if authored). Boost cards retain Now/Next values and building cards retain BuildingName/BuildingIcon binding. Removed generated summary, fallback boost/building labels, headings, empty-level text and generated UIListLayout. Missing templates produce no substitute UI. Cleanup only deletes tagged reward clones, preserving authored children/layouts. Gameplay rewards and the existing city-preserving/cash-reset policy are unchanged; the former generated preservation/reset summary is no longer inserted.
+
+Validation: test_daily_quest_ui covers authoritative daily eligibility, closed-panel deadlines, late badges, rejected/pending/claimed quests and expired boards; test_notification_center verifies construction starts are silent; test_rebirth_appearance verifies template-only rendering, missing templates and authored-child preservation. Required network/startup/persistence/receipt/security/cleanup/progression checks, source compilation (259 source / 37 tooling files), and path/helper audits pass. These are local mock/source checks, not a Studio visual test.

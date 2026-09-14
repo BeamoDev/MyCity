@@ -9,11 +9,7 @@ return function(Context)
 		if not snapshot.valid then
 			return 50
 		end
-		local distance, range = Context.Snapshot.nearest(position, snapshot.health)
-		if range == 0 then
-			return 50
-		end
-		local ratio = math.clamp((distance - range) / (range * 2), 0, 1)
+		local ratio = Context.Snapshot.coverage(position, snapshot.health, snapshot.indexes and snapshot.indexes.health)
 		return math.floor(100 + (50 - 100) * ratio)
 	end
 end

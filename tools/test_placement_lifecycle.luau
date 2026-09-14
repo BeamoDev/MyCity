@@ -123,7 +123,7 @@ local context = {
 		return true
 	end,
 	getPlayerPlot = function()
-		return {}
+		return node({})
 	end,
 	calculatePlotBounds = function()
 		return {}
@@ -506,3 +506,57 @@ for _, tile in owned:GetChildren() do
 	assert(#tile:GetChildren() == 0)
 end
 print("PASS: green owned-land highlights restored for all previews, no stacked copies, complete unequip cleanup")
+
+-- Moved indicator templates resolve from Assets with no children under ToolsModule.
+local assets = r.Instance.new("Folder")
+local arrows = r.Instance.new("BillboardGui")
+arrows.Name, arrows.Parent, arrows.Enabled = "ArrowsGUI", assets, false
+local selection = r.Instance.new("SelectionBox")
+selection.Name, selection.Parent = "BaseSelection", assets
+local preview = r.Instance.new("Model")
+local base = r.Instance.new("Part")
+base.Name, base.Parent = "Base", preview
+highlightContext.ReplicatedStorage = node({ Assets = assets })
+highlightContext.state.previewBuilding = preview
+highlightContext.addBuildingIndicators()
+assert(highlightContext.state.arrowsGui.Parent == base and highlightContext.state.arrowsGui.Enabled)
+assert(highlightContext.state.arrowsGui.Adornee == base)
+assert(highlightContext.state.baseSelection.Parent == base and highlightContext.state.baseSelection.Adornee == base)
+assert(arrows.Parent == assets and not arrows.Enabled and selection.Parent == assets)
+preview:Destroy()
+
+-- Tutorial guide assets also live directly under Assets; the originals stay untouched.
+local anchor = r.Instance.new("Part")
+anchor.Name, anchor.Parent = "TutorialBeamAnchor", assets
+local anchorAttachment = r.Instance.new("Attachment")
+anchorAttachment.Name, anchorAttachment.Parent = "AnchorAttachment", anchor
+local beam = r.Instance.new("Beam")
+beam.Name, beam.Parent = "BeamTemplate", assets
+local anchors = r.Instance.new("Folder")
+local stepSignal = signal()
+local guidance = {
+	ReplicatedStorage = node({ Assets = assets }),
+	RunService = { RenderStepped = stepSignal },
+	player = { Name = "GuideTest" },
+	tutorialState = { connections = {} },
+	connections = {
+		connect = function(_, event, fn)
+			return event:Connect(fn)
+		end,
+	},
+}
+load("src/client/controllers/tutorial/TutorialController/Guidance.luau", {
+	game = { Workspace = node({ Misc = node({ PlayerAnchors = anchors }) }) },
+})(guidance)
+guidance.createPlayerAnchor()
+guidance.setupBeam()
+assert(guidance.tutorialState.playerAnchor.Parent == anchors)
+assert(guidance.tutorialState.beamInstance.Attachment1.Parent == guidance.tutorialState.playerAnchor)
+local target = r.Instance.new("Part")
+local attachment = r.Instance.new("Attachment")
+attachment.Name, attachment.Parent = "Attachment", target
+guidance.updateBeamTarget(target)
+assert(guidance.tutorialState.beamInstance.Attachment0 == attachment)
+guidance.cleanupBeam()
+assert(#anchors:GetChildren() == 0 and beam.Parent == assets and anchor.Parent == assets)
+print("PASS: Assets placement arrows/base selection and tutorial anchor/beam cloning, binding and cleanup")

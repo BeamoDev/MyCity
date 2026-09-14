@@ -119,7 +119,6 @@ function BuildingConfig.collectBuilding(player, building)
 	end
 
 	local BuildingXP = require(script.Parent:WaitForChild("BuildingXP"))
-	BuildingXP.stopBuildingXPLoop(buildingID)
 
 	local configFolder = building:FindFirstChild("Config")
 	local level = 1
@@ -141,7 +140,17 @@ function BuildingConfig.collectBuilding(player, building)
 	local tool = BuildingStealing.createToolWithBuilding(buildingType, true, level, xp)
 	local backpack = player:FindFirstChild("Backpack")
 	if not tool or not backpack then
+		if tool then
+			tool:Destroy()
+		end
 		return false
+	end
+	-- Commit removal only after the replacement tool is ready.
+	BuildingXP.stopBuildingXPLoop(buildingID)
+	local mutation = building:FindFirstChild("Mutation")
+	if mutation and mutation:IsA("StringValue") then
+		local value = tool:FindFirstChild("Mutation") or Instance.new("StringValue")
+		value.Name, value.Value, value.Parent = "Mutation", mutation.Value, tool
 	end
 	tool:SetAttribute("RobuxBuilding", isRobuxBuilding)
 	tool.Parent = backpack
@@ -150,17 +159,6 @@ function BuildingConfig.collectBuilding(player, building)
 		local saveEntry = currentBuildings:FindFirstChild(buildingType .. "_" .. buildingID)
 		if saveEntry then
 			saveEntry:Destroy()
-		end
-	end
-
-	local DayNightCycle = require(script.Parent.Parent.Parent:WaitForChild("world"):WaitForChild("WeatherSystem"))
-	if DayNightCycle.isNightTime() then
-		for _, part in pairs(building:GetDescendants()) do
-			if part:IsA("MeshPart") then
-				local name = part.Name:lower()
-				if name:find("window") or name:find("glass") then
-				end
-			end
 		end
 	end
 
@@ -197,40 +195,8 @@ function BuildingConfig.moveBuilding(player, building)
 end
 
 function BuildingConfig.deleteBuilding(player, building)
-	if not Validation.ownsBuilding(player, building) then
-		return false
-	end
-	if not building or not building.Parent then
-		return
-	end
-
-	local buildingType = building:GetAttribute("BuildingType")
-	local buildingID = building:GetAttribute("BuildingID")
-
-	local BuildingXP = require(script.Parent:WaitForChild("BuildingXP"))
-	BuildingXP.stopBuildingXPLoop(buildingID)
-
-	local currentBuildings = player.Data:FindFirstChild("CurrentBuildings")
-	if currentBuildings then
-		local saveEntry = currentBuildings:FindFirstChild(buildingType .. "_" .. buildingID)
-		if saveEntry then
-			saveEntry:Destroy()
-		end
-	end
-
-	-- Update crime and happiness for the plot after building removal
-	local plot = building.Parent and building.Parent.Parent and building.Parent.Parent.Parent
-	if plot then
-		building:Destroy()
-		local BuildingStats = require(script.Parent:WaitForChild("BuildingStats"))
-		BuildingStats.updatePlotStats(plot)
-	else
-		building:Destroy()
-	end
-
-	ReplicatedStorage.Events.Movement.DeletedBuilding:FireClient(player)
-
-	ReplicatedStorage.Events.UI.CloseBuildingInfo:FireClient(player)
+	-- Removing a city building always returns its level/XP/paid state to inventory.
+	return BuildingConfig.collectBuilding(player, building)
 end
 
 function BuildingConfig.init()

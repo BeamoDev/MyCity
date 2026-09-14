@@ -88,6 +88,14 @@ local function signal()
 	return {
 		Connect = function(_, fn)
 			table.insert(list, fn)
+			return {
+				Disconnect = function()
+					local index = table.find(list, fn)
+					if index then
+						table.remove(list, index)
+					end
+				end,
+			}
 		end,
 		Fire = function(_, ...)
 			for _, fn in list do
@@ -121,7 +129,12 @@ for i = 1, 6 do
 		MyCityLoaded = true,
 		Data = node({ PlotInfo = node({ Plot = { Value = i } }) }),
 	})
-	plots["Plot" .. i] = node({ CityId = i, count = 16, Parent = true })
+	plots["Plot" .. i] = node({
+		CityId = i,
+		count = 16,
+		Parent = true,
+		Buildings = node({ Placed = node({ ChildAdded = signal(), ChildRemoved = signal() }) }),
+	})
 end
 local now, spawned, removed, steps = 0, 0, 0, 0
 local fakeRig = {
@@ -207,6 +220,7 @@ for _ = 1, 6 do
 end
 assert(spawned == 24 and removed == 0, "Duplicate start or incorrect global cap")
 plots.Plot1.count = 0
+plots.Plot1.Buildings.Placed.ChildRemoved:Fire({})
 tick()
 assert(removed == 4 and spawned - removed <= 24, "Population failed to shrink")
 players[2].MyCityLeaving = true

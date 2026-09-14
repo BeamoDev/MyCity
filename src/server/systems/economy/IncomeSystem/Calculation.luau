@@ -1,15 +1,13 @@
+local CityCache = require(script.Parent.CityCache)
 local Ownership = require(script.Parent.Parent.Parent.Parent.services.GamePassOwnership)
 -- Calculation: focused implementation for IncomeSystem.
-local Economy = require(script.Parent.Parent.BuildingEconomy)
 return function(Context)
 	local State = Context.State
 	local IncomeSystem = Context.IncomeSystem
 	local Workspace = Context.Workspace
-	local MarketplaceService = Context.MarketplaceService
 	local RebirthConfig = Context.RebirthConfig
 	local CRIME_INCOME_PENALTY = Context.CRIME_INCOME_PENALTY
 	local CRIME_THRESHOLD = Context.CRIME_THRESHOLD
-	local playerFriendBoosts = Context.playerFriendBoosts
 	local DOUBLE_CASH_GAMEPASS_ID = Context.DOUBLE_CASH_GAMEPASS_ID
 
 	function Context.hasDoubleCashGamepass(player)
@@ -88,8 +86,6 @@ return function(Context)
 	end
 
 	function IncomeSystem.calculatePopulation(player)
-		local BuildingConfig =
-			require(script.Parent.Parent.Parent.Parent:WaitForChild("config"):WaitForChild("BuildingConfig"))
 		local plotData = player:FindFirstChild("Data")
 			and player.Data:FindFirstChild("PlotInfo")
 			and player.Data.PlotInfo:FindFirstChild("Plot")
@@ -103,33 +99,8 @@ return function(Context)
 			return 0
 		end
 
-		local totalPopulation = 0
-		local placedFolder = plot.Buildings:FindFirstChild("Placed")
-		if placedFolder then
-			for _, building in ipairs(placedFolder:GetChildren()) do
-				local buildingType = building:GetAttribute("BuildingType")
-				if not buildingType then
-					local config = building:FindFirstChild("Config")
-					if config and config:FindFirstChild("BuildingName") then
-						buildingType = config.BuildingName.Value
-					else
-						buildingType = string.match(building.Name, "^([^_]+)")
-					end
-				end
-				if buildingType then
-					local buildingConfig = BuildingConfig[buildingType]
-					if buildingConfig and buildingConfig.Population then
-						local level = 1
-						local config = building:FindFirstChild("Config")
-						if config and config:FindFirstChild("BuildingLevel") then
-							level = config.BuildingLevel.Value
-						end
-
-						totalPopulation += Economy.population(buildingConfig, config)
-					end
-				end
-			end
-		end
+		local cache = CityCache.get(plot)
+		local totalPopulation = if cache then cache.population else 0
 
 		local multipliers = RebirthConfig.getPlayerMultipliers(player)
 		totalPopulation = math.floor(totalPopulation * multipliers.population)
@@ -156,8 +127,6 @@ return function(Context)
 	end
 
 	function IncomeSystem.calculateAndStackBuildingIncome(player, elapsed)
-		local BuildingConfig =
-			require(script.Parent.Parent.Parent.Parent:WaitForChild("config"):WaitForChild("BuildingConfig"))
 		local plotData = player:FindFirstChild("Data")
 			and player.Data:FindFirstChild("PlotInfo")
 			and player.Data.PlotInfo:FindFirstChild("Plot")
@@ -170,24 +139,14 @@ return function(Context)
 		if not plot then
 			return 0
 		end
-		local placedFolder = plot.Buildings:FindFirstChild("Placed")
-		if placedFolder then
-			for _, building in ipairs(placedFolder:GetChildren()) do
-				local configFolder, buildingType = IncomeSystem.ensureBuildingConfig(building)
-				local buildingNameValue = configFolder:FindFirstChild("BuildingName")
-				local collectedIncome = configFolder:FindFirstChild("CollectedIncome")
-				local crimePercent = configFolder:FindFirstChild("CrimePercent")
-				local happinessPercent = configFolder:FindFirstChild("HappinessPercent")
-
-				if buildingNameValue and collectedIncome then
-					local baseName = buildingNameValue.Value
-					local buildingConfig = BuildingConfig[baseName]
-					if buildingConfig and buildingConfig.Income and buildingConfig.Income > 0 then
-						local finalIncome = Economy.income(buildingConfig, configFolder)
-						collectedIncome.Value = collectedIncome.Value + finalIncome * (elapsed or 0)
-						totalIncome = totalIncome + collectedIncome.Value
-					end
+		local cache = CityCache.get(plot)
+		for _, entry in (if cache then cache.list else {}) do
+			local collected = entry.collected
+			if collected and collected.Parent then
+				if elapsed and elapsed > 0 then
+					collected.Value += entry.rate * elapsed
 				end
+				totalIncome += collected.Value
 			end
 		end
 

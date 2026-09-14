@@ -1,5 +1,7 @@
 -- Runtime-only folders and client render templates. Authoritative models remain server-only.
 local World = {}
+local started = false
+local Heartbeat = game:GetService("RunService").Heartbeat
 local function folder(parent, name)
 	local existing = parent:FindFirstChild(name)
 	if existing then
@@ -11,7 +13,27 @@ local function folder(parent, name)
 	value.Parent = parent
 	return value
 end
-function World.start()
+function World.start(isClosing)
+	if started then
+		return
+	end
+	local sliceStart, sliceCount = os.clock(), 0
+	local function checkpoint(newModel)
+		if isClosing and isClosing() then
+			return false
+		end
+		if sliceCount >= 6 or os.clock() - sliceStart >= 0.003 then
+			Heartbeat:Wait()
+			if isClosing and isClosing() then
+				return false
+			end
+			sliceStart, sliceCount = os.clock(), 0
+		end
+		if newModel then
+			sliceCount += 1
+		end
+		return true
+	end
 	local misc = folder(workspace, "Misc")
 	for _, name in { "PlayerAnchors", "PlayerPreviews", "Effects" } do
 		folder(misc, name)
@@ -22,8 +44,17 @@ function World.start()
 	local previews = folder(assets, "BuildingPreviews")
 	for _, model in models:GetChildren() do
 		if model:IsA("Model") then
+			if not checkpoint(true) then
+				return false
+			end
 			local copy = assert(model:Clone(), "Building must be Archivable: " .. model.Name)
-			for _, child in copy:GetDescendants() do
+			for index, child in copy:GetDescendants() do
+				if index % 64 == 0 then
+					if not checkpoint(false) then
+						copy:Destroy()
+						return false
+					end
+				end
 				if
 					child:IsA("LuaSourceContainer")
 					or child:IsA("ProximityPrompt")
@@ -46,8 +77,8 @@ function World.start()
 				old:Destroy()
 			end
 			copy.Parent = previews
-			task.wait() -- One template per frame, once per server; never blocks early loading presentation.
 		end
 	end
+	started = true
 end
 return World

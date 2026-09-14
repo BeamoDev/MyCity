@@ -286,7 +286,7 @@ print(
 	"PASS: active/offline-completed construction restore preserves IDs/paid status/XP/timing; one builder finalization, no income rescans or fixed delay"
 )
 
--- Compare actual optimized stat modules with the original nearest-provider formulas.
+-- Compare actual optimized stat modules with the strongest effective coverage formulas.
 local statsPath = "src/server/systems/building/BuildingSystem/BuildingStats/"
 local snapshotModule = load(statsPath .. "Snapshot.luau")
 local ranges = { Clinic = 20, Hospital = 30, SheriffOffice = 20, PoliceStation = 30, FireShed = 20, FireStation = 30 }
@@ -338,16 +338,14 @@ for _, name in { "Health", "Safety", "Happiness", "Aggregation" } do
 	load(statsPath .. name .. ".luau")(ctx)
 end
 local function expected(position, a, b, inside, outside)
-	local nearest, radius = math.huge, 0
+	local ratio = 1
 	for _, building in buildings do
 		if building.BuildingType == a or building.BuildingType == b then
 			local distance = (position - building.PrimaryPart.Position).Magnitude
-			if distance < nearest then
-				nearest, radius = distance, ranges[building.BuildingType]
-			end
+			local radius = ranges[building.BuildingType]
+			ratio = math.min(ratio, math.clamp((distance - radius) / (radius * 2), 0, 1))
 		end
 	end
-	local ratio = if radius == 0 then 1 else math.clamp((nearest - radius) / (radius * 2), 0, 1)
 	return math.floor(inside + (outside - inside) * ratio)
 end
 local statCheckpoints = 0
@@ -385,5 +383,5 @@ buildings = {}
 ctx.BuildingStats.updatePlotStats(statsPlot)
 ctx.BuildingStats.updatePlotStats(nil)
 print(
-	"PASS: 1,000-building stats match existing formulas with one city enumeration; level-only update, moved providers and empty/missing plots"
+	"PASS: 1,000-building stats match strongest coverage formulas with one city enumeration; level-only update, moved providers and empty/missing plots"
 )

@@ -64,19 +64,20 @@ function Board.progress(board, metric, amount)
 	if type(amount) ~= "number" or amount ~= amount or amount <= 0 or amount == math.huge then
 		return false
 	end
-	local changed = false
+	local changed, completed = false, false
 	for _, entry in board.Entries do
 		local quest = Catalog.ById[entry.Id]
 		if quest.Metric == metric and not entry.Claimed then
 			local target = if quest.Mode == "peak" then math.max(entry.Progress, amount) else entry.Progress + amount
 			target = math.min(quest.Target, target)
 			if target ~= entry.Progress then
+				completed = completed or target >= quest.Target
 				entry.Progress = target
 				changed = true
 			end
 		end
 	end
-	return changed
+	return changed, completed
 end
 function Board.claim(board, day, id)
 	if day ~= board.Day or type(id) ~= "string" then
@@ -101,19 +102,16 @@ function Board.snapshot(board, now)
 	local entries = {}
 	for _, entry in board.Entries do
 		local quest = Catalog.ById[entry.Id]
-		table.insert(
-			entries,
-			{
-				Id = entry.Id,
-				Title = quest.Title,
-				Difficulty = quest.Difficulty,
-				Metric = quest.Metric,
-				Target = quest.Target,
-				Progress = entry.Progress,
-				Reward = quest.Reward,
-				Claimed = entry.Claimed,
-			}
-		)
+		table.insert(entries, {
+			Id = entry.Id,
+			Title = quest.Title,
+			Difficulty = quest.Difficulty,
+			Metric = quest.Metric,
+			Target = quest.Target,
+			Progress = entry.Progress,
+			Reward = quest.Reward,
+			Claimed = entry.Claimed,
+		})
 	end
 	return { Day = board.Day, ResetsAt = (board.Day + 1) * Catalog.DaySeconds, ServerTime = now, Quests = entries }
 end

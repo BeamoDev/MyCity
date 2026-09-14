@@ -11,7 +11,13 @@ return function(Context)
 
 		local availablePlots = {}
 		for _, plotCandidate in ipairs(plotsFolder:GetChildren()) do
-			if not plotCandidate:GetAttribute("Assigned") then
+			if
+				plotCandidate.Name:match("^Plot%d+$")
+				and plotCandidate:FindFirstChild("Land")
+				and plotCandidate:FindFirstChild("Buildings")
+				and plotCandidate:FindFirstChild("PlotSpawn")
+				and not plotCandidate:GetAttribute("Assigned")
+			then
 				table.insert(availablePlots, plotCandidate)
 			end
 		end
@@ -48,8 +54,6 @@ return function(Context)
 					end
 				end
 			end
-
-			wait(0.15)
 
 			for _, tile in ipairs(Locked:GetChildren()) do
 				local tileNumber = Context.getTileNumber(tile)
@@ -92,7 +96,12 @@ return function(Context)
 			:WaitForChild("ToggleOverheadUI")
 			:FireClient(player, overheadBillboard)
 
-		character:WaitForChild("HumanoidRootPart").CFrame = plot:FindFirstChild("PlotSpawn").CFrame
+		local root = character:WaitForChild("HumanoidRootPart", 10)
+		assert(
+			root and player.Parent and player.Character == character and not player:GetAttribute("MyCityLeaving"),
+			"Character unavailable or player departing"
+		)
+		root.CFrame = plot:FindFirstChild("PlotSpawn").CFrame
 
 		Context.spawnAllScenery()
 	end

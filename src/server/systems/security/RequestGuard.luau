@@ -1,5 +1,6 @@
 local Guard = {}
 local busy = setmetatable({}, { __mode = "k" })
+local intervals = { DailyQuestRequest = 1, DailyRewardUpdate = 1, CityName = 2, ClientReady = 1 }
 local requests = setmetatable({}, { __mode = "k" })
 
 function Guard.ready(player)
@@ -20,7 +21,7 @@ function Guard.run(player, action, callback, ...)
 	local times = requests[player] or {}
 	requests[player] = times
 	local now = os.clock()
-	if now - (times[action] or -math.huge) < 0.25 then
+	if now - (times[action] or -math.huge) < (intervals[action] or 0.25) then
 		return false
 	end
 	times[action] = now

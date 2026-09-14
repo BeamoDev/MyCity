@@ -36,7 +36,7 @@ return function(Context)
 			return
 		end
 
-		Context.updateBuildingVisuals()
+		Context.updateBuildingVisuals(true)
 		if not state.canPlace then
 			ReplicatedStorage.Events.Movement.CannotPlace:FireServer()
 			if SoundService:FindFirstChild("SFX") and SoundService.SFX:FindFirstChild("ErrorSound") then
@@ -67,10 +67,10 @@ return function(Context)
 		local ok, success = pcall(function()
 			return ReplicatedStorage.Functions.PlaceBlock:InvokeServer(cframe, tool)
 		end)
-		state.placing = false
 		if state.generation ~= generation then
-			return -- Unequipped/destroyed/re-equipped while the server was responding.
+			return -- Never clear a newer session's in-flight request.
 		end
+		state.placing = false
 		if ok and success then
 			Context.cleanup()
 		else

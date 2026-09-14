@@ -15,16 +15,7 @@ Players.PlayerRemoving:Connect(function(player)
 	awardedCache[player.UserId] = nil
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(300)
-		for uid in pairs(awardedCache) do
-			if not Players:GetPlayerByUserId(uid) then
-				awardedCache[uid] = nil
-			end
-		end
-	end
-end)
+local pending = {}
 
 function BadgeModule.AwardBadge(player, badgeId)
 	if not player or typeof(badgeId) ~= "number" or not player.Parent then
@@ -41,16 +32,32 @@ function BadgeModule.AwardBadge(player, badgeId)
 		return true
 	end
 
-	if userHasBadge(uid, badgeId) then
-		awardedCache[uid][badgeId] = true
-		return true
+	local key = uid .. ":" .. badgeId
+	if pending[key] then
+		return false
 	end
-
-	local ok, granted = pcall(function()
-		return BadgeService:AwardBadge(uid, badgeId)
-	end)
-
-	if ok and granted then
+	pending[key] = true
+	local granted = false
+	for attempt = 1, 3 do
+		if not player.Parent then
+			break
+		end
+		if userHasBadge(uid, badgeId) then
+			granted = true
+			break
+		end
+		local ok, result = pcall(BadgeService.AwardBadge, BadgeService, uid, badgeId)
+		if ok and result then
+			granted = true
+			break
+		end
+		if attempt < 3 then
+			task.wait(attempt * 2)
+		end
+	end
+	pending[key] = nil
+	if granted and player.Parent then
+		awardedCache[uid] = awardedCache[uid] or {}
 		awardedCache[uid][badgeId] = true
 		return true
 	end

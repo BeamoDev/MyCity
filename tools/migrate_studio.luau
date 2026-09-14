@@ -3,20 +3,62 @@
 -- Old replaced scripts are disabled and archived; no gameplay/DataStore calls.
 assert(not game:GetService("RunService"):IsRunning(), "Stop Play before migrating")
 local moves = {
-	{ { "server", "Main", "BuildingSystem", "BuildingConfig" }, { "server", "systems", "building", "BuildingSystem", "BuildingConfig" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingData" }, { "server", "systems", "building", "BuildingSystem", "BuildingData" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingPlacement" }, { "server", "systems", "building", "BuildingSystem", "BuildingPlacement" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingPrompts" }, { "server", "systems", "building", "BuildingSystem", "BuildingPrompts" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingStats" }, { "server", "systems", "building", "BuildingSystem", "BuildingStats" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingStealing" }, { "server", "systems", "building", "BuildingSystem", "BuildingStealing" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingThoughts" }, { "server", "systems", "building", "BuildingSystem", "BuildingThoughts" } },
-	{ { "server", "Main", "BuildingSystem", "BuildingXP" }, { "server", "systems", "building", "BuildingSystem", "BuildingXP" } },
-	{ { "server", "Main", "ConstructionSystem", "ConstructionBuilder" }, { "server", "systems", "construction", "ConstructionSystem", "ConstructionBuilder" } },
-	{ { "server", "Main", "ConstructionSystem", "ConstructionData" }, { "server", "systems", "construction", "ConstructionSystem", "ConstructionData" } },
-	{ { "server", "Main", "ConstructionSystem", "ConstructionSkipping" }, { "server", "systems", "construction", "ConstructionSystem", "ConstructionSkipping" } },
-	{ { "server", "Main", "ConstructionSystem", "ConstructionTimer" }, { "server", "systems", "construction", "ConstructionSystem", "ConstructionTimer" } },
-	{ { "server", "Main", "ConstructionSystem", "ConstructionVFX" }, { "server", "systems", "construction", "ConstructionSystem", "ConstructionVFX" } },
-	{ { "server", "Main", "MarketPlaceHandler", "WebHook" }, { "server", "services", "MarketPlaceHandler", "WebHook" } },
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingConfig" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingConfig" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingData" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingData" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingPlacement" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingPlacement" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingPrompts" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingPrompts" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingStats" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingStats" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingStealing" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingStealing" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingThoughts" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingThoughts" },
+	},
+	{
+		{ "server", "Main", "BuildingSystem", "BuildingXP" },
+		{ "server", "systems", "building", "BuildingSystem", "BuildingXP" },
+	},
+	{
+		{ "server", "Main", "ConstructionSystem", "ConstructionBuilder" },
+		{ "server", "systems", "construction", "ConstructionSystem", "ConstructionBuilder" },
+	},
+	{
+		{ "server", "Main", "ConstructionSystem", "ConstructionData" },
+		{ "server", "systems", "construction", "ConstructionSystem", "ConstructionData" },
+	},
+	{
+		{ "server", "Main", "ConstructionSystem", "ConstructionSkipping" },
+		{ "server", "systems", "construction", "ConstructionSystem", "ConstructionSkipping" },
+	},
+	{
+		{ "server", "Main", "ConstructionSystem", "ConstructionTimer" },
+		{ "server", "systems", "construction", "ConstructionSystem", "ConstructionTimer" },
+	},
+	{
+		{ "server", "Main", "ConstructionSystem", "ConstructionVFX" },
+		{ "server", "systems", "construction", "ConstructionSystem", "ConstructionVFX" },
+	},
+	{
+		{ "server", "Main", "MarketPlaceHandler", "WebHook" },
+		{ "server", "services", "MarketPlaceHandler", "WebHook" },
+	},
 	{ { "server", "Main", "BadgeModule" }, { "server", "systems", "progression", "BadgeModule" } },
 	{ { "server", "Main", "BuildingConfig" }, { "server", "config", "BuildingConfig" } },
 	{ { "server", "Main", "CityNameSystem" }, { "server", "systems", "world", "CityNameSystem" } },
@@ -62,6 +104,13 @@ local moves = {
 	{ { "client", "ProximityPromptScript" }, { "client", "controllers", "ui", "ProximityPromptController" } },
 }
 local classes = {
+	["server.bootstrap.Shutdown"] = "ModuleScript",
+	["shared.visuals.AmbientModel"] = "ModuleScript",
+	["shared.visuals.AmbientTrip"] = "ModuleScript",
+	["server.services.SimulationScheduler"] = "ModuleScript",
+	["server.systems.social.CityLikeRewards"] = "ModuleScript",
+	["server.systems.economy.IncomeSystem.CityCache"] = "ModuleScript",
+	["client.controllers.world.AmbientTrafficController"] = "ModuleScript",
 	["client.bootstrap.EarlyLoading"] = "ModuleScript",
 	["client.bootstrap.HudBootstrap"] = "ModuleScript",
 	["client.controllers.intro.IntroController.Camera"] = "ModuleScript",
@@ -125,7 +174,7 @@ local classes = {
 	["client.controllers.ui.UIController.DailyQuests.ButtonBinding"] = "ModuleScript",
 	["client.controllers.ui.UIController.DailyQuests.QuestRow"] = "ModuleScript",
 	["client.controllers.ui.UIController.DailyQuests.View"] = "ModuleScript",
-	["client.controllers.ui.UIController.DailyQuests.Widgets"] = "ModuleScript",
+	["client.controllers.ui.UIController.DailyQuests.ClaimStyle"] = "ModuleScript",
 	["client.controllers.ui.UIController.DailyRewards"] = "ModuleScript",
 	["client.controllers.ui.UIController.Displays"] = "ModuleScript",
 	["client.controllers.ui.UIController"] = "ModuleScript",
@@ -135,6 +184,7 @@ local classes = {
 	["client.controllers.ui.UIController.Rebirth"] = "ModuleScript",
 	["client.controllers.ui.UIController.RebirthConfirmation"] = "ModuleScript",
 	["client.controllers.ui.UIController.RebirthRewards"] = "ModuleScript",
+	["client.controllers.ui.UIController.ClaimAlerts"] = "ModuleScript",
 	["client.controllers.ui.UIController.RemoteBindings"] = "ModuleScript",
 	["client.controllers.ui.UIController.remotes.BuildingInfo"] = "ModuleScript",
 	["client.controllers.ui.UIController.remotes.CityName"] = "ModuleScript",
@@ -309,6 +359,9 @@ local classes = {
 	["server.systems.world.PlotManager.Reset"] = "ModuleScript",
 	["server.systems.world.PlotManager.Scenery"] = "ModuleScript",
 	["server.systems.world.TrainSystem"] = "ModuleScript",
+	["server.systems.world.AmbientTraffic"] = "ModuleScript",
+	["server.systems.world.AmbientTraffic.Model"] = "ModuleScript",
+	["server.systems.world.AmbientTraffic.Routes"] = "ModuleScript",
 	["server.systems.world.VFX"] = "ModuleScript",
 	["server.systems.world.WeatherSystem"] = "ModuleScript",
 	["shared.Network"] = "ModuleScript",
@@ -320,54 +373,63 @@ local classes = {
 }
 local starter = game:GetService("StarterPlayer").StarterPlayerScripts
 local roots = {
- server = game:GetService("ServerScriptService"):FindFirstChild("server"),
- client = starter:FindFirstChild("client") or starter,
- shared = game:GetService("ReplicatedStorage"):FindFirstChild("shared"),
+	server = game:GetService("ServerScriptService"):FindFirstChild("server"),
+	client = starter:FindFirstChild("client") or starter,
+	shared = game:GetService("ReplicatedStorage"):FindFirstChild("shared"),
 }
 assert(roots.server and roots.shared, "Expected server and shared Script Sync roots")
 local function resolve(path, create, stopBeforeLeaf)
- local current = roots[path[1]]
- local prefix = path[1]
- local last = #path - (stopBeforeLeaf and 1 or 0)
- for index = 2, last do
-  local name = path[index]
-  prefix ..= "." .. name
-  local child = current:FindFirstChild(name)
-  if not child and create then
-   child = Instance.new(classes[prefix] or "Folder")
-   child.Name = name
-   child.Parent = current
-  end
-  if not child then return nil end
-  current = child
- end
- return current
+	local current = roots[path[1]]
+	local prefix = path[1]
+	local last = #path - (stopBeforeLeaf and 1 or 0)
+	for index = 2, last do
+		local name = path[index]
+		prefix ..= "." .. name
+		local child = current:FindFirstChild(name)
+		if not child and create then
+			child = Instance.new(classes[prefix] or "Folder")
+			child.Name = name
+			child.Parent = current
+		end
+		if not child then
+			return nil
+		end
+		current = child
+	end
+	return current
 end
 
 -- Preflight destination classes, including parent ModuleScripts, before mutation.
 for path, expected in classes do
- local names = string.split(path, ".")
- local current = roots[names[1]]
- local prefix = names[1]
- for index = 2, #names do
-  prefix ..= "." .. names[index]
-  current = current and current:FindFirstChild(names[index])
-  if not current then break end
-  local kind = classes[prefix] or "Folder"
-  assert(current.ClassName == kind, "Wrong destination class: " .. current:GetFullName() .. "; expected " .. kind)
- end
+	local names = string.split(path, ".")
+	local current = roots[names[1]]
+	local prefix = names[1]
+	for index = 2, #names do
+		prefix ..= "." .. names[index]
+		current = current and current:FindFirstChild(names[index])
+		if not current then
+			break
+		end
+		local kind = classes[prefix] or "Folder"
+		assert(current.ClassName == kind, "Wrong destination class: " .. current:GetFullName() .. "; expected " .. kind)
+	end
 end
 
 -- Preflight authored child collisions before moving anything.
 for _, move in moves do
- local old, target = resolve(move[1]), resolve(move[2])
- if old and target and old ~= target then
-  for _, child in old:GetChildren() do
-   if target:FindFirstChild(child.Name) then
-    error("Template collision; preserve and reconcile both copies: " .. target:GetFullName() .. "." .. child.Name)
-   end
-  end
- end
+	local old, target = resolve(move[1]), resolve(move[2])
+	if old and target and old ~= target then
+		for _, child in old:GetChildren() do
+			if target:FindFirstChild(child.Name) then
+				error(
+					"Template collision; preserve and reconcile both copies: "
+						.. target:GetFullName()
+						.. "."
+						.. child.Name
+				)
+			end
+		end
+	end
 end
 
 game:GetService("ChangeHistoryService"):SetWaypoint("Before MyCity folder migration")
@@ -377,33 +439,39 @@ archive.Name = "MyCityMigrationArchive"
 archive.Parent = storage
 local count = 0
 for _, move in moves do
- local old = resolve(move[1])
- if not old then continue end
- local parent = resolve(move[2],true,true)
- local name = move[2][#move[2]]
- local target = parent:FindFirstChild(name)
- local expected = classes[table.concat(move[2],".")]
- if old == target then continue end
- if not target and old.ClassName == expected then
-  old.Name = name
-  old.Parent = parent
- else
-  if not target then
-   target = Instance.new(expected)
-   target.Name = name
-   target.Parent = parent
-  end
-  assert(target.ClassName == expected,"Wrong destination class: " .. target:GetFullName())
-  for _, child in old:GetChildren() do
-   assert(not target:FindFirstChild(child.Name),"Conflicting child: " .. child.Name)
-   child.Parent = target
-  end
-  if old:IsA("BaseScript") then old.Enabled = false end
-  old.Name = table.concat(move[1],"_")
-  old.Parent = archive
- end
- count += 1
+	local old = resolve(move[1])
+	if not old then
+		continue
+	end
+	local parent = resolve(move[2], true, true)
+	local name = move[2][#move[2]]
+	local target = parent:FindFirstChild(name)
+	local expected = classes[table.concat(move[2], ".")]
+	if old == target then
+		continue
+	end
+	if not target and old.ClassName == expected then
+		old.Name = name
+		old.Parent = parent
+	else
+		if not target then
+			target = Instance.new(expected)
+			target.Name = name
+			target.Parent = parent
+		end
+		assert(target.ClassName == expected, "Wrong destination class: " .. target:GetFullName())
+		for _, child in old:GetChildren() do
+			assert(not target:FindFirstChild(child.Name), "Conflicting child: " .. child.Name)
+			child.Parent = target
+		end
+		if old:IsA("BaseScript") then
+			old.Enabled = false
+		end
+		old.Name = table.concat(move[1], "_")
+		old.Parent = archive
+	end
+	count += 1
 end
 game:GetService("ChangeHistoryService"):SetWaypoint("After MyCity folder migration")
-print("[MyCity] Moved",count,"source containers. Resume Script Sync and sync all src files before Play.")
+print("[MyCity] Moved", count, "source containers. Resume Script Sync and sync all src files before Play.")
 print("[MyCity] Items belongs under ReplicatedStorage.Assets.Items. Archived scripts are disabled in ServerStorage.")

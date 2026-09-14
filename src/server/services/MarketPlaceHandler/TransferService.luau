@@ -36,8 +36,11 @@ function Transfer.take(details, transferId)
 		if not descriptor then
 			local folder = if details.Construction then owner.Data.CurrentConstructions else owner.Data.CurrentBuildings
 			local tracker = folder:FindFirstChild(details.Identifier)
-			if not tracker or not tracker:IsA("StringValue") then
-				return nil
+			if not tracker then
+				return nil, "missing"
+			end
+			if not tracker:IsA("StringValue") then
+				return nil, "invalid"
 			end
 			descriptor = Transfer.descriptor(tracker.Value, details.Identifier, details.Construction)
 			local plot = workspace.Plots:FindFirstChild("Plot" .. owner.Data.PlotInfo.Plot.Value)

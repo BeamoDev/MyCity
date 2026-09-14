@@ -10,7 +10,7 @@ return function(Context)
 			return "crime" -- Need police
 		elseif fireSafetyPercent < 50 then
 			return "fire" -- Need fire station
-		elseif healthPercent < 50 then
+		elseif healthPercent <= 50 then
 			return "health" -- Need hospital
 		elseif happinessPercent < 60 then
 			return "unhappy" -- Need trees/decorations
@@ -62,7 +62,7 @@ return function(Context)
 		end
 
 		-- Calculate how many thoughts to show
-		local maxThoughts = math.max(1, math.floor(#allResidentialBuildings * MAX_CONCURRENT_THOUGHTS))
+		local maxThoughts = math.min(12, math.max(1, math.floor(#allResidentialBuildings * MAX_CONCURRENT_THOUGHTS)))
 		local currentThoughtCount = 0
 
 		for _, data in pairs(State.activeThoughts) do

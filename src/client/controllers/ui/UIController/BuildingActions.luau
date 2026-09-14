@@ -15,7 +15,18 @@ return function(Context)
 		local CollectButton = Buttonsframe:FindFirstChild("Collect")
 		local DeleteButton = Buttonsframe:FindFirstChild("Delete")
 
-		Context.connections:connect(DeleteButton.MouseButton1Click, function()
+		if DeleteButton then
+			local label = DeleteButton:FindFirstChild("TextLabel")
+			if label then
+				label.Text = "Store"
+			elseif DeleteButton:IsA("TextButton") then
+				DeleteButton.Text = "Store"
+			end
+		end
+		if not DeleteButton or not CollectButton then
+			return
+		end
+		Context.connections:connect(DeleteButton.Activated, function()
 			local currentTime = tick()
 
 			if currentTime - State.lastRequestTime < REQUEST_COOLDOWN then
@@ -32,7 +43,7 @@ return function(Context)
 			State.currentBuildingToCollect = nil
 		end)
 
-		Context.connections:connect(CollectButton.MouseButton1Click, function()
+		Context.connections:connect(CollectButton.Activated, function()
 			local currentTime = tick()
 
 			if currentTime - State.lastRequestTime < REQUEST_COOLDOWN then
@@ -50,7 +61,7 @@ return function(Context)
 		end)
 
 		if closeButton then
-			Context.connections:connect(closeButton.MouseButton1Click, function()
+			Context.connections:connect(closeButton.Activated, function()
 				UIController.closeUIFrame(State.BuildingDataFrame)
 				State.currentBuildingToCollect = nil
 			end)

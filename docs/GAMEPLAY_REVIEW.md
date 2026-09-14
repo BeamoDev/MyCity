@@ -1,5 +1,8 @@
 # Gameplay reliability review ? 2026-09-09
 
+**2026-09-10 update:** See [SYSTEM_HARDENING.md](SYSTEM_HARDENING.md) for the latest fixes, approved gameplay changes and verification limits. The dated findings below describe earlier source; client ambient rendering, shared simulation scheduling, income caching, best service coverage, city-preserving Store/rebirth and paid-target recovery now supersede the corresponding recommendations.
+
+
 The reviewed source has been repaired and locally tested. This is **not a 100% production sign-off**: Studio assets, UI scripts outside the export, product availability, real receipt delivery, device input and live persistence still need verification. No live purchases, DataStore changes or publishing were performed.
 
 ## Verified and repaired

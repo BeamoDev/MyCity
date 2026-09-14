@@ -37,23 +37,30 @@ return function(Context)
 
 		local function ensureTemplate()
 			if not Template or not Template.Parent then
+				local source = ReplicatedStorage:WaitForChild("Assets"):FindFirstChild("WeatherTemplate")
+				if not source then
+					return false
+				end
 				clearChildrenExceptLayouts(State.weatherFrame)
-
-				Template = script.Parent.Parent:FindFirstChild("WeatherTemplate"):Clone()
+				Template = source:Clone()
+				Template.Visible = true
 				Template.Parent = State.weatherFrame
 
 				timeLabel = Template:FindFirstChild("Label")
 				iconLabel = Template:FindFirstChild("Icon")
 			end
+			return true
 		end
 
 		Context.connections:connect(timeUpdateRemote.OnClientEvent, function(timeOfDay, remaining)
-			ensureTemplate()
+			if not ensureTemplate() then
+				return
+			end
 
-			if timeOfDay == "Day" then
-				iconLabel.Image = "rbxassetid://92871176483776"
-			else
-				iconLabel.Image = "rbxassetid://102636102491014"
+			if iconLabel then
+				iconLabel.Image = if timeOfDay == "Day"
+					then "rbxassetid://92871176483776"
+					else "rbxassetid://102636102491014"
 			end
 
 			if timeLabel then

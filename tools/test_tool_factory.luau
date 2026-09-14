@@ -7,58 +7,36 @@ local function node(fields)
 	end
 	return fields
 end
-local lastClone
 local original = r.Instance.new("Part")
 original.Anchored = true
 original.Size = r.Vector3.new(10, 20, 10)
-local function modelClone()
-	local root, roof = original:Clone(), original:Clone()
-	local script = {
-		IsA = function(_, class)
-			return class == "LuaSourceContainer"
-		end,
-		Destroy = function(self)
-			self.removed = true
-		end,
-	}
-	local items = { root, roof, script }
-	local model = { PrimaryPart = root, removedScript = script, parts = { root, roof } }
-	function model:GetDescendants()
-		return items
-	end
-	function model:GetBoundingBox()
-		return r.CFrame.identity, r.Vector3.new(10, 20, 10)
-	end
-	function model:GetScale()
-		return 1
-	end
-	function model:ScaleTo(scale)
-		self.scale = scale
-	end
-	function model:GetPivot()
-		return r.CFrame.identity
-	end
-	function model:PivotTo(cf)
-		self.pivot = cf
-	end
-	function model:Destroy()
-		self.destroyed = true
-	end
-	lastClone = model
-	return model
-end
-local replicated = node({
-	Assets = node({
-		Buildings = node({
-			Bank = {
-				IsA = function(_, class)
-					return class == "Model"
-				end,
-				Clone = modelClone,
-			},
-		}),
-	}),
-})
+local source = r.Instance.new("Model")
+source.Name = "Bank"
+local root = original:Clone()
+root.Name, root.Parent = "Base", source
+source.PrimaryPart = root
+local roof = original:Clone()
+roof.Name, roof.Parent = "Roof", source
+local behavior = r.Instance.new("Script")
+behavior.Name, behavior.Parent = "Legacy", source
+local preparations = 0
+r.implementMethod("Model", "GetBoundingBox", function()
+	return r.CFrame.identity, r.Vector3.new(10, 20, 10)
+end)
+r.implementMethod("Model", "GetScale", function(model)
+	return model:GetAttribute("MockScale") or 1
+end)
+r.implementMethod("Model", "ScaleTo", function(model, scale)
+	preparations += 1
+	model:SetAttribute("MockScale", scale)
+end)
+r.implementMethod("Model", "GetPivot", function()
+	return r.CFrame.identity
+end)
+r.implementMethod("Model", "PivotTo", function(model, cf)
+	model:SetAttribute("MockPivot", cf)
+end)
+local replicated = node({ Assets = node({ Buildings = node({ Bank = source }) }) })
 local visuals = luau.load(fs.readFile("src/server/services/HeldBuildingVisual.luau"), {
 	environment = {
 		Instance = r.Instance,
@@ -108,13 +86,20 @@ local tool = factory.create("Bank", true, 7, 230, "Gold")
 assert(tool:IsA("Tool") and tool.RequiresHandle and not tool.CanBeDropped)
 assert(tool.ToolName.Value == "Bank" and tool.IsValid.Value and tool.BuildingLevel.Value == 7)
 assert(tool.BuildingXP.Value == 230 and tool.Mutation.Value == "Gold" and tool.TextureId == "rbxassetid://123")
-assert(lastClone.removedScript.removed and math.abs(lastClone.scale - 0.085) < 0.0001)
-assert(lastClone.Parent == tool and original.Anchored and original.Size.Y == 20, "Authored template was changed")
-for _, part in lastClone.parts do
-	assert(not part.Anchored and not part.CanCollide and not part.CanQuery and not part.CanTouch and part.Massless)
-	local weld = part:FindFirstChild("HeldBuildingWeld")
-	assert(weld and weld.Part0 == tool.Handle and weld.Part1 == part)
+local visual = tool:FindFirstChild("HeldBuildingVisual")
+assert(visual and not visual:FindFirstChild("Legacy") and math.abs(visual:GetAttribute("MockScale") - 0.085) < 0.0001)
+assert(source.Legacy and source.Base.Anchored and source.Base.Size.Y == 20, "Authored template was changed")
+for _, part in visual:GetDescendants() do
+	if part:IsA("BasePart") then
+		assert(not part.Anchored and not part.CanCollide and not part.CanQuery and not part.CanTouch and part.Massless)
+		local weld = part:FindFirstChild("HeldBuildingWeld")
+		assert(weld and weld.Part0 == tool.Handle and weld.Part1 == part)
+	end
 end
+local second = factory.create("Bank", false, 1, 0)
+assert(preparations == 1, "Repeated held models were sanitized/scaled again")
+assert(second.HeldBuildingVisual.Base.HeldBuildingWeld.Part0 == second.Handle)
+assert(second.HeldBuildingVisual.Base.HeldBuildingWeld.Part0 ~= tool.Handle, "Cached weld points to another tool")
 assert(not tool:FindFirstChild("Init") and not tool:FindFirstChild("ToolModel"))
 local other = factory.create("MissingVisual", false, 1, 0)
 assert(

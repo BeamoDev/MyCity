@@ -42,9 +42,28 @@ function SessionStore.save(userId, sessionId, snapshot, release)
 	return written ~= nil
 end
 
-function SessionStore.transferOffline(userId, identifier, construction, transferId, descriptorFor)
-	local result = Store:UpdateAsync(tostring(userId), function(raw)
+-- Failed/canceled loads release ownership without writing any in-memory gameplay.
+function SessionStore.release(userId, sessionId)
+	local written = Store:UpdateAsync(tostring(userId), function(raw)
 		if raw == nil then
+			return nil
+		end
+		local current = decode(raw)
+		if not current.Session or current.Session.Id ~= sessionId then
+			return nil
+		end
+		current.Session = nil
+		return HttpService:JSONEncode(current)
+	end)
+	return written ~= nil
+end
+
+function SessionStore.transferOffline(userId, identifier, construction, transferId, descriptorFor)
+	local outcome
+	local result = Store:UpdateAsync(tostring(userId), function(raw)
+		outcome = "unavailable"
+		if raw == nil then
+			outcome = "missing"
 			return nil
 		end
 		local record = decode(raw)
@@ -56,8 +75,15 @@ function SessionStore.transferOffline(userId, identifier, construction, transfer
 		if not record.Transfers[transferId] then
 			local folder = record.PlayerData
 				and record.PlayerData[if construction then "CurrentConstructions" else "CurrentBuildings"]
+			if type(folder) ~= "table" then
+				return nil
+			end
 			local entry = folder and folder[identifier]
-			if not entry or entry.ClassName ~= "StringValue" then
+			if not entry then
+				outcome = "missing"
+				return nil
+			end
+			if entry.ClassName ~= "StringValue" then
 				return nil
 			end
 			record.Transfers[transferId] = descriptorFor(entry.Value, identifier, construction)
@@ -66,7 +92,7 @@ function SessionStore.transferOffline(userId, identifier, construction, transfer
 		return HttpService:JSONEncode(record)
 	end)
 	if not result then
-		return nil
+		return nil, outcome
 	end
 	return decode(result).Transfers[transferId]
 end

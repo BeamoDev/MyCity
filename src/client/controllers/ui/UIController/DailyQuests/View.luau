@@ -1,76 +1,67 @@
-local W = require(script.Parent.Widgets)
 local View = {}
+local function layout(parent, direction)
+	local existing = parent:FindFirstChildOfClass("UIListLayout")
+	if not existing then
+		existing = Instance.new("UIListLayout")
+		existing.FillDirection = direction
+		existing.Parent = parent
+	end
+	existing.SortOrder = Enum.SortOrder.LayoutOrder
+end
 function View.create(hud)
-	-- Keep generated UI independent of authored Frames sizing, clipping and layout objects.
-	local screen = W.make("ScreenGui", hud.Parent, {
-		Name = "MyCityDailyQuests",
-		ResetOnSpawn = false,
-		DisplayOrder = hud.DisplayOrder + 10,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		Enabled = hud.Enabled,
-	})
-	screen:SetAttribute("MyCityGenerated", true)
-	local root = W.make("Frame", screen, {
-		Name = "DailyQuests",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		ZIndex = 100,
-		Active = true,
-		BackgroundTransparency = 1,
-		Visible = false,
-	})
-	root:SetAttribute("MyCityGenerated", true)
-	local card = W.make("Frame", root, {
-		Name = "Panel",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(0.94, 0.88),
-		BackgroundColor3 = Color3.fromRGB(248, 249, 242),
-		BorderSizePixel = 0,
-	})
-	W.corner(card, 16)
-	W.make("UISizeConstraint", card, { MaxSize = Vector2.new(760, 820) })
-	W.make("UIStroke", card, { Color = Color3.fromRGB(45, 49, 34), Thickness = 3 })
-	local header = W.make(
-		"Frame",
-		card,
-		{ Size = UDim2.new(1, 0, 0, 68), BackgroundColor3 = Color3.fromRGB(255, 222, 65), BorderSizePixel = 0 }
-	)
-	W.corner(header, 16)
-	W.text(header, "DAILY QUESTS", UDim2.fromOffset(18, 0), UDim2.new(1, -88, 1, 0), 24)
-	local close = W.make("TextButton", header, {
-		Name = "Close",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -12, 0.5, 0),
-		Size = UDim2.fromOffset(42, 42),
-		Text = "X",
-		Font = Enum.Font.GothamBold,
-		TextSize = 22,
-		TextColor3 = Color3.new(1, 1, 1),
-		BackgroundColor3 = Color3.fromRGB(225, 66, 67),
-		BorderSizePixel = 0,
-	})
-	W.corner(close, 10)
-	local timer = W.text(card, "Loading your six quests...", UDim2.fromOffset(18, 75), UDim2.new(1, -36, 0, 27), 16)
-	local scroll = W.make("ScrollingFrame", card, {
-		Name = "Quests",
-		Position = UDim2.fromOffset(12, 110),
-		Size = UDim2.new(1, -24, 1, -154),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 5,
-	})
-	W.make("UIPadding", scroll, {
-		PaddingLeft = UDim.new(0, 4),
-		PaddingRight = UDim.new(0, 9),
-		PaddingTop = UDim.new(0, 4),
-		PaddingBottom = UDim.new(0, 6),
-	})
-	W.make("UIListLayout", scroll, { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder })
-	local footer = W.text(card, "2 easy / 2 medium / 2 hard", UDim2.new(0, 18, 1, -37), UDim2.new(1, -36, 0, 26), 14)
-	return { Screen = screen, Root = root, List = scroll, Close = close, Timer = timer, Footer = footer }
+	-- Remove only the old code-owned display, never authored HUD objects.
+	for _, parent in { hud.Parent, hud:FindFirstChild("Frames") } do
+		if parent then
+			for _, child in parent:GetChildren() do
+				if
+					(child.Name == "MyCityDailyQuests" or child.Name == "DailyQuests")
+					and child:GetAttribute("MyCityGenerated")
+				then
+					child:Destroy()
+				end
+			end
+		end
+	end
+	local frames = hud:FindFirstChild("Frames")
+	local root = frames and frames:FindFirstChild("Quests")
+	local frame = root and root:FindFirstChild("Frame")
+	local content = frame and frame:FindFirstChild("Content")
+	local template = frame and frame:FindFirstChild("Template")
+	local header = frame and frame:FindFirstChild("Header")
+	local title = header and header:FindFirstChild("TextLabel", true)
+	local close = frame and frame:FindFirstChild("X")
+	local top = content and content:FindFirstChild("Top")
+	local bottom = content and content:FindFirstChild("Bottom")
+	if
+		not (
+			root
+			and template
+			and template:IsA("GuiObject")
+			and title
+			and title:IsA("TextLabel")
+			and close
+			and close:IsA("GuiButton")
+			and top
+			and bottom
+		)
+	then
+		warn("[DailyQuests] Expected HUD.Frames.Quests.Frame: Header.TextLabel, Content.Top/Bottom, Template and X")
+		return nil
+	end
+	template.Visible, root.Visible = false, false
+	frame.Visible, content.Visible, top.Visible, bottom.Visible = true, true, true, true
+	top.LayoutOrder, bottom.LayoutOrder = 1, 100
+	layout(content, Enum.FillDirection.Vertical)
+	if content:IsA("ScrollingFrame") then
+		content.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		content.CanvasSize = UDim2.fromScale(0, 0)
+	end
+	close.Active, close.Interactable = true, true
+	return { Root = root, Template = template, List = content, Close = close, Timer = title }
+end
+function View.updateTimer(view, remaining)
+	view.Timer.Text = if remaining
+		then string.format("Daily Quests (%dH %02dM)", math.floor(remaining / 3600), math.floor(remaining % 3600 / 60))
+		else "Daily Quests (Loading...)"
 end
 return View

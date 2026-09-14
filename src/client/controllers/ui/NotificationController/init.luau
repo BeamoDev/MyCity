@@ -24,11 +24,6 @@ local NOTIFICATION_DATA = {
 		sound = "NotificationLow",
 		flashColor = Color3.fromRGB(255, 255, 83),
 	},
-	BuildingStarted = {
-		textColor = Color3.fromRGB(255, 255, 83),
-		sound = "NotificationLow",
-		flashColor = Color3.fromRGB(255, 255, 83),
-	},
 	ComingSoon = {
 		textColor = Color3.fromRGB(255, 255, 255), -- White text
 		sound = "NotificationLow",

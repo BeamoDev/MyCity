@@ -53,13 +53,6 @@ return function(Context)
 		end)
 
 		Context.connections:connect(
-			ReplicatedStorage.Events.Notifications:WaitForChild("BuildingStarted").OnClientEvent,
-			function(buildingName)
-				NotificationController.showNotification("BuildingStarted", buildingName .. " Started Construction")
-			end
-		)
-
-		Context.connections:connect(
 			ReplicatedStorage.Events.Notifications:WaitForChild("ItemBought").OnClientEvent,
 			function(itemName)
 				NotificationController.showNotification("ItemBought", itemName .. " Bought!")
@@ -92,7 +85,7 @@ return function(Context)
 		Context.connections:connect(
 			ReplicatedStorage.Events.Notifications:WaitForChild("GroupReward").OnClientEvent,
 			function()
-				NotificationController.showNotification("GroupReward", "Group: Free Police Station!")
+				NotificationController.showNotification("GroupReward", "Group reward: Police Station")
 			end
 		)
 

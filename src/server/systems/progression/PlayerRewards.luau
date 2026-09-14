@@ -3,7 +3,9 @@ local BadgeSystem = require(script.Parent.BadgeModule)
 local Factory = require(script.Parent.Parent.Parent.services.ToolFactory)
 local GROUP_ID = 1050526813
 local GROUP_REWARD_BUILDING = "PoliceStation"
-local MIN_RANK_FOR_REWARD = 0
+local Guard = require(script.Parent.Parent.security.RequestGuard)
+local Data = require(script.Parent.Parent.Parent.persistence.PlayerDataModule)
+local pending = setmetatable({}, { __mode = "k" })
 local cashConnections = {}
 local Rewards = {}
 local function checkMillionaire(player)
@@ -41,60 +43,80 @@ function Rewards.trackMillionaire(player)
 	end)
 end
 
+local function eligible(player)
+	if not Guard.ready(player) then
+		return nil
+	end
+	local data = player:FindFirstChild("Data")
+	local info = data and data:FindFirstChild("PlayerInfo")
+	local tutorial = info and info:FindFirstChild("Tutorial")
+	local active = tutorial and tutorial:FindFirstChild("IsInTutorial")
+	local claimed = info and info:FindFirstChild("GroupRewardClaimed")
+	if not active or active.Value or not claimed or claimed.Value then
+		return nil
+	end
+	return claimed
+end
+
+-- Called after ClientReady: tutorial presentation has observed completion before the alert.
 function Rewards.giveGroupReward(player)
-	local playerInfo = player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayerInfo")
-	if not playerInfo then
+	if pending[player] or not eligible(player) then
 		return
 	end
-
-	-- Check if already claimed
-	local hasGroupReward = playerInfo:FindFirstChild("GroupRewardClaimed")
-	if not hasGroupReward then
-		hasGroupReward = Instance.new("BoolValue")
-		hasGroupReward.Name = "GroupRewardClaimed"
-		hasGroupReward.Parent = playerInfo
-		hasGroupReward.Value = false
-	end
-
-	if hasGroupReward.Value then
-		return
-	end
-
-	-- Check if player is in group
-	local success, isInGroup = pcall(function()
-		return player:IsInGroup(GROUP_ID)
-	end)
-	if not success or not isInGroup then
-		return
-	end
-
-	-- Check player's rank in group
-	local success2, rank = pcall(function()
-		return player:GetRankInGroup(GROUP_ID)
-	end)
-	if not success2 or rank < MIN_RANK_FOR_REWARD then
-		return
-	end
-
-	-- Check if already has the building in inventory
-	local inventory = player:FindFirstChild("Data") and player.Data:FindFirstChild("Inventory")
-	if not inventory then
-		return
-	end
-	if inventory:FindFirstChild(GROUP_REWARD_BUILDING) then
-		return
-	end
-
-	-- Give the group reward building
-	local tool = Factory.create(GROUP_REWARD_BUILDING, false, 1, 0)
-	if tool then
-		tool.Parent = player:FindFirstChild("Backpack") or player:WaitForChild("Backpack")
-		hasGroupReward.Value = true
-
-		-- Fire notification event if it exists
-		if ReplicatedStorage.Events.Notifications:FindFirstChild("GroupReward") then
-			ReplicatedStorage.Events.Notifications.GroupReward:FireClient(player)
+	pending[player] = true
+	local ok, err = pcall(function()
+		local checked, member
+		for attempt = 1, 3 do
+			checked, member = pcall(player.IsInGroup, player, GROUP_ID)
+			if checked then
+				break
+			end
+			task.wait(attempt)
+			if not eligible(player) then
+				return
+			end
 		end
+		if not checked or not member then
+			return
+		end
+		-- Tutorial completion/respawn may still hold the inventory guard for a moment.
+		for _ = 1, 20 do
+			if not eligible(player) then
+				return
+			end
+			local granted = Guard.run(player, "GroupReward", function()
+				local claimed = eligible(player)
+				local backpack = player:FindFirstChild("Backpack")
+				if not claimed or not backpack then
+					return false
+				end
+				local tool = Factory.create(GROUP_REWARD_BUILDING, false, 1, 0)
+				if not tool then
+					return false
+				end
+				if not eligible(player) or backpack.Parent ~= player then
+					tool:Destroy()
+					return false
+				end
+				tool.Parent = backpack
+				claimed.Value = true
+				-- The existing beforeSave hook snapshots the tool and claim in one profile.
+				Data.savePlayerData(player)
+				-- Keep the marker on transient save failure; autosave retries without a second grant.
+				if player.Parent and not player:GetAttribute("MyCityLeaving") then
+					ReplicatedStorage.Events.Notifications.GroupReward:FireClient(player)
+				end
+				return true
+			end)
+			if granted then
+				return
+			end
+			task.wait(0.5)
+		end
+	end)
+	pending[player] = nil
+	if not ok then
+		warn("[GroupReward] Grant failed for", player.UserId, err)
 	end
 end
 

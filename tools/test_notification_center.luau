@@ -235,6 +235,8 @@ assert(#notices() == 1 and notices()[1].Message.Text == "A startup error")
 print("PASS: loading/Play messages queue until HUD handoff, then deduplicate through the same feed")
 
 context.NotificationController.clearAll()
+notifications.BuildingStarted:fire("Bank")
+assert(#notices() == 0, "Construction starts must not add a notification")
 notifications.CollectIncome:fire(5000)
 assert(#notices() == 0, "Cash collection must not add a notification")
 print("PASS: income collection does not show a notification")

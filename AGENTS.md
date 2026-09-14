@@ -1,7 +1,46 @@
 # MyCity project handoff
 
-Updated 2026-09-09. Root: `Active Games/MyCity`, the standalone city-building game.
+Updated 2026-09-14. Root: `Active Games/MyCity`, the standalone city-building game.
 This is not the historical KingdomWars campaign checkout named MyCity.
+
+## Repeated join refusal recovery (2026-09-14)
+
+The user supplied a player complaint about repeatedly being told the city failed to load and to rejoin; no username or server traceback is available. Source confirms a recovery gap: profile acquisition previously tried three times with only six seconds of waits while an old lease lasts 180 seconds. This can reproduce repeated quick-rejoin refusals, but is not proof of the reported player's exact cause.
+
+PlayerDataModule now polls a contested lease every five seconds for up to a 190-second acquisition window, allowing a previous server to release or a crashed server's lease to expire. Five consecutive service errors stop retries with backoff; departure stops retry waits within 0.25 seconds. External DataStore calls can still exceed the local deadline. Active foreign leases are never force-released, and failed reads never become default cities.
+
+SessionStore.release atomically removes only the calling session's lock from the current stored record. Failed/canceled loads use this method with three release attempts instead of writing an in-memory snapshot. This preserves saved city/receipt data even if owner reset or partial restoration changed the working record; a newer server's lock is untouched. Normal successful departure still saves gameplay and releases through the existing save path.
+
+PlayerLifecycle records MyCityLoadStage and logs the failing stage plus traceback. Terminal errors expose MyCityLoadErrorCode: LOAD_SESSION, LOAD_SERVICE, LOAD_RESTORE, or CITY_<stage>. A failed city load revokes both MyCityLoaded and MyCityInventoryReady before abandonment. Optional join badge work runs separately and cannot fail a restored city. Persistent restoration failures request a report code instead of endlessly promising that another rejoin will fix them.
+
+Validation: all 40 local suites pass, including new test_load_recovery using the real loader/SessionStore with simulated storage and clocks; test_shutdown also covers building/quest failures and optional badge failure. Source/tool compilation and path/helper checks pass. No live DataStore or Studio reproduction was performed. Sync PlayerDataModule (including SessionStore) and bootstrap.PlayerLifecycle together, then start fresh servers. Existing data namespace/envelope/schema and authored assets are unchanged. See docs/BUG_AUDIT.md for the verification procedure.
+
+## Startup/shutdown race fix (2026-09-10)
+
+The supplied Studio log showed PlayerLifecycle registering BindToClose after yielding bootstrap work, when Play was already stopping. New `server/bootstrap/Shutdown.luau` registers once before SpawnGuard, network/assets or system initialization. It marks closure/departure immediately and accepts the lifecycle save callback before any player load starts. A bootstrap resumed during closure returns; preview preparation cancels between work slices. An already-closing Script Sync session refuses startup safely.
+
+PlayerLifecycle is idempotent, rejects queued departing/closing joins, checks cancellation after yielding load stages and abandons partial restorations without a late kick or partial save. A DataStore acquisition returning after departure releases the original record before creating player data. Spawn holds reject late departing-character events, and plot relocation verifies the current character/departure status after its bounded root wait. Normal loaded players retain the shared PlayerRemoving/BindToClose save path.
+
+The separate Studio message `Character cannot be changed as Player ... is being removed` had no source traceback. Exported source contains no LoadCharacter call or direct Player.Character assignment; these guards fix late gameplay work, but an engine or unexported-script origin cannot be confirmed from that message alone. Do not claim that message reproduced or resolved in Studio without a fresh Play/Stop test.
+
+Validation: 39 local test suites pass; all 266 source and 44 tool files compile; path/helper audits pass. New test_shutdown executes early registration, already-closing refusal, stop-during-bootstrap, cancellation while data is loading, queued join refusal and one normal shutdown save. Data-schema tests execute a departure during successful profile acquisition and verify unchanged-record release. Studio stop-during-load remains unverified.
+
+Sync the new ModuleScript `ServerScriptService.server.bootstrap.Shutdown` with the updated server tree, then start a fresh Play session. The read-only audit and migration module-class table include it.
+
+## Latest state: full hardening pass (2026-09-10)
+
+Read `docs/SYSTEM_HARDENING.md` first for the complete per-system change ledger and remaining integration limits. This section supersedes historical notes below. The tree currently has 266 source files. No Git or Studio connection was available.
+
+- User approved Store instead of permanent Delete, smoother rebirth requirements, equivalent-item compensation for confirmed missing paid-steal targets, and keeping ambiguous old price-tier purchases pending with recovery feedback.
+- Required new modules: server.services.SimulationScheduler; server.systems.economy.IncomeSystem.CityCache; server.systems.social.CityLikeRewards; client.controllers.world.AmbientTrafficController; shared.visuals.AmbientModel and AmbientTrip. Sync all three roots and restart Play together.
+- Server ambient traffic creates immutable Folder descriptors in ReplicatedStorage.Runtime.AmbientTraffic. Clients clone sanitized Assets models into Workspace.Misc.AmbientVehicles and animate them with synchronized timestamps. Do not restore server per-frame model motion alongside this renderer.
+- XP and construction use SimulationScheduler (six dispatches/3 ms per frame, elapsed-time callbacks, no callback self-overlap). Income rates/population cache invalidates on city/value changes. Service coverage chooses best effective coverage with spatial buckets for large lists. Held visual cache is capped at 32 templates; source replacement invalidates it, in-place live asset edits require restarting Play.
+- Data_1, original envelopes and schema 5 remain. Autosaves are staggered; failed saves retry and queued saves have a bounded busy wait. Completed receipt plans are compacted without deleting receipt IDs. PendingReceipts blocks ambiguous product reuse. Confirmed absence enables saved-descriptor steal compensation; active foreign leases/service errors remain pending.
+- CityRatings.rewardSequence counts new non-self likes; Data_1.CityLikeRewardSequence saves alongside owner cash. Retain this metadata across owner gameplay resets and rollbacks. Historical likes are not retrospectively rewarded. Permanent receipt/transfer/voter history still needs a safe archival design at extreme volume.
+- Delete now returns a prepared tool and the authored button says Store. Rebirths 1?10 require 100/300/650/1200/2000/3200/5000/7500/11000/16000 population; level 50 remains 142000, later levels grow 15%. Existing city preservation/cash reset and template-only reward UI remain.
+- The unused direct-steal and in-place plot-relocation APIs now refuse mutation. Use the receipt transfer path and normal city restoration.
+- Daily quest progress coalesces to five seconds, completion/rollover refresh promptly, and the claimed snapshot precedes result feedback. Daily rewards save immediately. No cash-collection/construction-start/tutorial notifications were added. No Word Hunt UI transitions or inventory rewrite was added.
+- Validation: 38 source/mock test suites plus compilation/path/helper audits. Studio asset approval, real storage/receipts, camera/input feel and measured loading/FPS remain unverified. See the report for each system's evidence; do not call this 100/100 or zero-lag production verification.
 
 ## Working rules
 
@@ -353,3 +392,64 @@ DailyQuests.ButtonBinding binds GuiButtons named Quests anywhere under HUD.Butto
 Validation: test_daily_quest_ui now executes button events through actual Navigation with disabled button input and hidden/zero-size authored Frames; verifies opening, closing, reopening, late button binding, HUD enable mirroring, six cards, claims and screen cleanup. Quest UI, placement lifecycle and transition tests pass; all 255 source and 34 tooling files compile; path/helper audits pass. The user's precise Studio obstruction remains unconfirmed without live hierarchy/input inspection.
 
 Civilian pace update: WalkSpeed is now 1.5 studs/second, half the previous 3, per user request. Both spawn and movement retries read this shared config.
+
+## Group Police Station after tutorial (2026-09-09)
+
+PlayerRewards.giveGroupReward now runs deferred from Loading.ClientReady, after the client has observed tutorial completion. The server checks MyCityLoaded/inventory readiness, IsInTutorial=false, saved GroupRewardClaimed=false and membership in group 1050526813. The load-time and TutorialSystem.finishTutorial grants are removed so the reward alert is not sent while tutorial notifications are suppressed. The existing tutorial completion presentation already requests ClientReady; returning completed members are also eligible.
+
+The grant uses RequestGuard plus a per-player in-flight guard, retries temporary membership errors/busy inventory, rechecks eligibility after yields, creates PoliceStation through ToolFactory, and saves the tool and claim flag together via PlayerDataModule's inventory snapshot hook. No rank threshold or existing PoliceStation inventory-name check blocks membership rewards. Transient save failure retains the in-session tool/marker for normal autosave retry. A persisted claim prevents repeat grants; the existing explicit owner fresh-profile reset resets it for owner testing. NotificationCenter displays exactly 'Group reward: Police Station'.
+
+Validation: new test_group_reward executes membership/tutorial gates, temporary lookup failure, concurrent/repeated calls, saved claim on rejoin, backpack recovery, failed-save duplicate prevention and departure/tutorial rechecks. It and progression/startup/cleanup tests pass; all 255 source and 35 tooling files compile, helper checks pass. Studio group lookup, inventory presentation and live saving remain unverified.
+
+## Authored Daily Quests panel (latest, 2026-09-09)
+
+The user replaced the generated quest display with HUD.Frames.Quests.Frame. DailyQuests.View now binds that authored panel, its Header descendant TextLabel, Content ScrollingFrame, Template and X. The old MyCityDailyQuests ScreenGui generator and Widgets module are removed. Only legacy instances tagged MyCityGenerated are removed; authored UI is preserved. Keep ButtonBinding's enabled input/late binding and Navigation's immediate quest opening.
+
+Clone Template directly into Content six times with LayoutOrder 1-6. User explicitly confirmed Content.Top and Content.Bottom are padding frames, NOT row containers: preserve their sizes/children, set orders 0 and 7, retain the existing UIListLayout with LayoutOrder sorting and use automatic vertical canvas sizing. Template remains hidden. Cleanup/day replacement destroys only owned clones; never clear Content or destroy the authored panel. No frames or text labels are manufactured as UI replacements.
+
+Each clone uses Title, Difficulty TextLabels, Reward (explicitly confirmed Template.Reward), Progress TextLabel, Progress Frame.Fill and Claim.TextLabel. Resolve duplicate Progress names by class; do not confuse the bar Frame with the text label. Header reads Daily Quests (19H 20M), based on server reset time and elapsed client time. ClaimStyle restores the exact ready state: text Claim, stroke RGB(31,106,40), gradient #44ff0b to #aeff45. Loading, In progress, Claiming... and Claimed are disabled grey states. Failed claims restore eligibility/green from the current snapshot. Server claim validation and daily reset/persistence are unchanged.
+
+Validation: authored template cloning, six ordered direct Content children, preserved Top/Bottom dimensions, nested header countdown, Reward binding, duplicate Progress lookup, exact gradient endpoints, disabled/ready/retry states, day replacement and authored cleanup all pass in test_daily_quest_ui. Transition/placement regressions and required network/startup/persistence/receipt/security/cleanup/progression checks pass. All 255 source and 35 tooling files compile; path/helper audits pass. Studio's actual authored layout and device appearance remain unverified.
+
+Quest button wording: incomplete quests show Locked (grey/disabled), replacing In progress. Other claim states are unchanged.
+
+## UIController templates in Assets (latest, 2026-09-09)
+
+User moved every authored template formerly under UIController directly into ReplicatedStorage.Assets. RebirthConfirmation now passes Assets to RebirthRewards, resolving IncomeBoostTemp, PopulationBoostTemp and BuildingTemp there. Weather resolves Assets.WeatherTemplate, makes its clone visible and safely defers if the template has not replicated. No authored template lookup remains under UIController. The authored daily quest Template remains HUD.Frames.Quests.Frame.Template per its separate explicit hierarchy. ConstructionTemplate was already in Assets. Sync RebirthConfirmation and remotes.Weather; the Studio audit now checks the four moved templates in Assets.
+
+Existing rebirth/appearance tests and compilation of 255 source / 35 tooling files pass. Studio template rendering remains unverified.
+
+## Remaining script-owned assets moved to Assets (2026-09-09)
+
+Audited all exported script-relative lookups after the user's broader relocation request. ToolsModule.Session.Preview now clones ReplicatedStorage.Assets.ArrowsGUI and BaseSelection; arrows are explicitly enabled/adorned and cleanup still belongs to the placement session. TutorialController.Guidance now clones Assets.TutorialBeamAnchor and BeamTemplate into the existing Workspace.Misc.PlayerAnchors runtime folder. BuildingXP.Effects now reads Assets.SparklesGold, SparklesBlue and SparklesPink. ProximityPromptController also resolves named Theme BillboardGui templates from Assets, with Assets.Default fallback. Source templates stay untouched.
+
+No remaining game asset lookup is rooted under a script/module in exported source; relative requires still intentionally resolve code modules. Satchel's package/module references and style attributes remain code dependencies. ItemName appears as a live HUD/shop template label (SellTool.Frame.ToolItem.ItemName and item cards), not a script-owned template. PlacementHighlight has no active asset lookup; owned-land highlights are still code-created SelectionBoxes. The earliest before-deep-refactor backup confirms the same sell ItemName binding and old ToolsModule ArrowsGUI/BaseSelection names. Do not revive unused assets or move live HUD labels based on their names. Hidden scripts inside Studio assets are outside this source audit.
+
+Validation: placement regressions now execute Assets arrow/selection cloning and tutorial anchor/beam creation/cleanup with no script-owned templates. XP particle tests verify all three tier sources, replacement and source preservation. Required core checks, tutorial tests, source compilation (255 source / 35 tools) and path/helper audits pass. Live Studio hierarchy/visuals are not verified.
+
+## Daily quest display priority (2026-09-09)
+
+DailyQuests sorts the six display cards on each render: completed/unclaimed first (including pending claims), unfinished next by descending progress/target percentage, claimed last. Equal progress retains original board order. The server snapshot is not reordered and claims still use quest IDs. All card LayoutOrder values, including loading placeholders, are 2-7. User-confirmed padding orders are Content.Top=1 and Content.Bottom=100, superseding earlier 0/7 values. Local authored quest UI tests cover mixed states, percentage versus raw totals, completion/claim movement, ties and all layout bounds.
+
+## Train movement and ambient traffic cleanup (2026-09-09)
+
+TrainSystem and HighwayTrafficSystem are now small configuration modules delegating to systems.world.AmbientTraffic (init, Model, Routes). One shared Heartbeat updates all active vehicles. Each train/car gets one whole-model PivotTo derived from its captured start/end CFrames and elapsed trip time. Removed train PrimaryPart tween plus SetPrimaryPartCFrame feedback, per-vehicle connections, completed-car connection retention and sleeping spawn loops that survived rapid stop/restart. Model preparation anchors all parts and disables collisions/touches/queries, strips embedded scripts/prompts before parenting, and preserves authored primary-to-pivot and carriage offsets. Source assets remain untouched. Whole-model movement is still server-replicated each frame; this does not claim to eliminate replication bandwidth.
+
+Train routes retain Point3->Point4 / Point1->Point2, +90-degree authored rotation and 40-second trips with 20-40 second spawn intervals. Only one train occupies each route, so the two available routes permit at most two visible trains despite the existing global cap of three. Cars retain Point3->Point4 (-90) / Point6->Point5 (+90), speed 5, cap 25, 1-4 second spawns and +/-1.8 lane offset; offsets and rotation now stay consistent throughout the trip. Missing ActiveCars is created. Invalid/zero-length routes are skipped; delayed frames retire completed trips without overshoot or bursts of catch-up spawns. Initialization and stop/restart are idempotent.
+
+WorldRuntime batches stripped building preview preparation using a six-model / approximately 3ms slice instead of an unconditional task.wait per model. Large descendant scans check the time budget every 64 children while the clone remains detached. Once complete, repeated start does not reclone every asset. Authoritative restore/save ordering and early loading UI stay unchanged.
+
+InventorySystem.loadInventory now shares RestoreBudget across saved tool decoding, reducing uninterrupted work when multiple large inventories join. It stages tools until validation completes and destroys all staged tools on decoding failure/departure/backpack replacement. Saved inventory records and ToolIds are unchanged; failure still refuses partial restoration.
+
+Validation: full local test suite passes, including new ambient vehicle rigidity/one-writer/shared-connection/route-cap/delayed-frame/restart tests and a 60-tool inventory restore/failure/departure test. The mocked 24-template startup now yields three times instead of the former 24 forced waits. All 258 source / 37 tooling files compile and path/helper audits pass. This is source/mock evidence; actual train flicker, authored model appearance, Studio FPS/replication and join durations still require a Play/profile check.
+
+
+## Claim badges and template-only rebirth confirmation (2026-09-09)
+
+ConstructionTimer no longer emits BuildingStarted notices and NotificationController no longer binds or styles that notification. The unused network entry is retained for compatibility; construction tracking/progress and completion notices remain active.
+
+UIController.ClaimAlerts binds the authored Alerts child (plural) of DailyReward and Quests GuiButtons under HUD.Buttons, including late-replicating badges. Both initialize hidden. Daily rewards use the authoritative canClaim/currentDay/claimedDays snapshot; the eligibility deadline keeps requesting updates while the panel is closed, with request throttling. A successful claim's snapshot clears the badge. Quests show the badge for any completed, unclaimed, non-pending quest; rejected claims restore it, claimed snapshots clear it, and expired boards hide it and request a fresh board even while closed. HUD connection scope owns the listeners/timers. No badge UI is created.
+
+RebirthRewards now clones only Assets.IncomeBoostTemp, PopulationBoostTemp and BuildingTemp (and optional XPBoostTemp if authored). Boost cards retain Now/Next values and building cards retain BuildingName/BuildingIcon binding. Removed generated summary, fallback boost/building labels, headings, empty-level text and generated UIListLayout. Missing templates produce no substitute UI. Cleanup only deletes tagged reward clones, preserving authored children/layouts. Gameplay rewards and the existing city-preserving/cash-reset policy are unchanged; the former generated preservation/reset summary is no longer inserted.
+
+Validation: test_daily_quest_ui covers authoritative daily eligibility, closed-panel deadlines, late badges, rejected/pending/claimed quests and expired boards; test_notification_center verifies construction starts are silent; test_rebirth_appearance verifies template-only rendering, missing templates and authored-child preservation. Required network/startup/persistence/receipt/security/cleanup/progression checks, source compilation (259 source / 37 tooling files), and path/helper audits pass. These are local mock/source checks, not a Studio visual test.

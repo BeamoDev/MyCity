@@ -107,13 +107,14 @@ return function(Context)
 			return
 		end
 
+		local assets = Context.ReplicatedStorage:WaitForChild("Assets")
 		local sparklesTemplate
 		if level >= 100 then
-			sparklesTemplate = script.Parent:FindFirstChild("SparklesPink")
+			sparklesTemplate = assets:FindFirstChild("SparklesPink")
 		elseif level >= 40 then
-			sparklesTemplate = script.Parent:FindFirstChild("SparklesBlue")
+			sparklesTemplate = assets:FindFirstChild("SparklesBlue")
 		else
-			sparklesTemplate = script.Parent:FindFirstChild("SparklesGold")
+			sparklesTemplate = assets:FindFirstChild("SparklesGold")
 		end
 
 		if not sparklesTemplate then

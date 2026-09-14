@@ -79,3 +79,27 @@ assert(not pcall(codec.encodeFolder, fresh), "Ambiguous duplicate save keys were
 print(
 	"PASS: profile lease contention, expiry, stale writes, release, corrupt data refusal, legacy nesting, recursive round-trip, duplicate keys"
 )
+
+local function descriptor(value)
+	return { Name = "Bank", Value = value }
+end
+local item, outcome = store.transferOffline(999, "Bank_1", false, "a", descriptor)
+assert(item == nil and outcome == "missing")
+records["999"] =
+	http:JSONEncode({ PlayerData = { CurrentBuildings = {} }, Session = { Id = "busy", Expires = clock + 60 } })
+item, outcome = store.transferOffline(999, "Bank_1", false, "a", descriptor)
+assert(item == nil and outcome == "unavailable", "Active remote lease treated as absence")
+records["999"] = http:JSONEncode({ PlayerData = { CurrentBuildings = {} } })
+item, outcome = store.transferOffline(999, "Bank_1", false, "a", descriptor)
+assert(item == nil and outcome == "missing")
+records["999"] =
+	http:JSONEncode({ PlayerData = { CurrentBuildings = { Bank_1 = { ClassName = "StringValue", Value = "saved" } } } })
+assert(store.transferOffline(999, "Bank_1", false, "a", descriptor).Name == "Bank")
+assert(
+	store.transferOffline(999, "Bank_1", false, "a", descriptor).Name == "Bank",
+	"Transfer retry lost durable descriptor"
+)
+records["999"] = http:JSONEncode({ PlayerData = {} })
+item, outcome = store.transferOffline(999, "Bank_1", false, "a", descriptor)
+assert(item == nil and outcome == "unavailable", "Malformed envelope treated as confirmed absence")
+print("PASS: offline transfer confirmed absence, active lease, malformed folder and durable removal replay")

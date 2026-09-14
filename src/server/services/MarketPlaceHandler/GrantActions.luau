@@ -38,7 +38,11 @@ function Actions.apply(player, step, transactionId)
 		if step.OwnerId == player.UserId or not player:FindFirstChild("Backpack") then
 			return false
 		end
-		local descriptor = Transfers.take(step, transactionId)
+		local descriptor, outcome = Transfers.take(step, transactionId)
+		if not descriptor and outcome == "missing" and type(step.Snapshot) == "table" then
+			-- Only confirmed absence permits compensation; service/lease errors keep retrying.
+			descriptor = table.clone(step.Snapshot)
+		end
 		if not descriptor or not require(script.Parent.Parent.Parent.systems.security.RequestGuard).ready(player) then
 			return false
 		end

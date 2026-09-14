@@ -29,6 +29,9 @@ function System.cleanupPlayer(player)
 		return
 	end
 	city.active = false
+	for _, connection in city.connections or {} do
+		connection:Disconnect()
+	end
 	cities[player] = nil
 	for _, record in city.records do
 		Rig.destroy(record)
@@ -65,8 +68,31 @@ local function sync()
 			city =
 				{ plot = plot, player = player, folder = folder, ownsFolder = ownsFolder, records = {}, active = true }
 			cities[player] = city
+			city.connections, city.dirty = {}, true
+			local buildings, land = plot:FindFirstChild("Buildings"), plot:FindFirstChild("Land")
+			for _, folder in
+				{
+					buildings and buildings:FindFirstChild("Placed"),
+					buildings and buildings:FindFirstChild("Construction"),
+					land and land:FindFirstChild("Owned"),
+				}
+			do
+				if folder then
+					for _, signal in { folder.ChildAdded, folder.ChildRemoved } do
+						table.insert(
+							city.connections,
+							signal:Connect(function()
+								city.dirty = true
+							end)
+						)
+					end
+				end
+			end
 		end
-		city.geometry = Geometry.snapshot(plot)
+		if city.dirty or os.clock() >= (city.refreshAt or 0) then
+			city.geometry = Geometry.snapshot(plot)
+			city.dirty, city.refreshAt = false, os.clock() + 10
+		end
 		table.insert(active, city)
 		table.insert(counts, Config.desired(city.geometry.count))
 	end

@@ -1,12 +1,14 @@
 local View = require(script.View)
 local Row = require(script.QuestRow)
 local bindButton = require(script.ButtonBinding)
+local bindAlert = require(script.Parent.ClaimAlerts)
 return function(Context)
 	local State = Context.State
 	local events = Context.ReplicatedStorage.Events.DailyQuests
 	local view, snapshot, receivedAt
 	local rows, pending = {}, {}
 	local lastRequest = -math.huge
+	local setAlert
 	local function request()
 		if os.clock() - lastRequest < 2 then
 			return
@@ -18,14 +20,39 @@ return function(Context)
 		if not view or not snapshot then
 			return
 		end
-		local present, claimed = {}, 0
+		local present = {}
+		local ordered = {}
+		local claimable = false
 		for index, quest in snapshot.Quests do
-			present[quest.Id] = true
-			if quest.Claimed then
-				claimed += 1
+			if index > 6 then
+				break
 			end
+			local progress = math.clamp(quest.Progress / math.max(1, quest.Target), 0, 1)
+			if not quest.Claimed and progress >= 1 and not pending[quest.Id] then
+				claimable = true
+			end
+			table.insert(ordered, {
+				quest = quest,
+				index = index,
+				progress = progress,
+				group = if quest.Claimed then 3 elseif progress >= 1 then 1 else 2,
+			})
+		end
+		setAlert(claimable and snapshot.ResetsAt > snapshot.ServerTime + os.clock() - receivedAt)
+		table.sort(ordered, function(a, b)
+			if a.group ~= b.group then
+				return a.group < b.group
+			end
+			if a.progress ~= b.progress then
+				return a.progress > b.progress
+			end
+			return a.index < b.index
+		end)
+		for index, entry in ordered do
+			local quest = entry.quest
+			present[quest.Id] = true
 			if not rows[quest.Id] then
-				rows[quest.Id] = Row.create(view.List, function(id)
+				rows[quest.Id] = Row.create(view.Template, view.List, function(id)
 					if not snapshot or pending[id] then
 						return
 					end
@@ -34,7 +61,8 @@ return function(Context)
 					events.Claim:FireServer(snapshot.Day, id)
 				end)
 			end
-			Row.update(rows[quest.Id], quest, index, Context.TweenService, pending[quest.Id] ~= nil)
+			rows[quest.Id].Root.Parent = view.List
+			Row.update(rows[quest.Id], quest, index + 1, Context.TweenService, pending[quest.Id] ~= nil)
 		end
 		for id, row in rows do
 			if not present[id] then
@@ -42,22 +70,19 @@ return function(Context)
 				rows[id] = nil
 			end
 		end
-		view.Footer.Text = string.format("%d / 6 rewards claimed / New quests every day", claimed)
 	end
 	function Context.setupDailyQuests()
+		setAlert = bindAlert(State.ButtonFolder, "Quests", Context.connections)
 		view = View.create(State.HUD)
+		if not view then
+			return
+		end
 		State.DailyQuestFrame = view.Root
-		Context.connections:connect(State.HUD:GetPropertyChangedSignal("Enabled"), function()
-			view.Screen.Enabled = State.HUD.Enabled
-		end)
+		View.updateTimer(view, nil)
 		-- A real loading layout is visible even before the first server snapshot arrives.
 		for index = 1, 6 do
-			local row = Row.create(view.List, function() end)
-			row.Root.Name, row.Root.LayoutOrder = "Loading" .. index, index
-			row.Title.Text = "Loading quest..."
-			row.Difficulty.Text, row.Progress.Text = "", "-- / --"
-			row.Reward.Text = "Reward ..."
-			row.Claim.Text, row.Claim.Interactable = "Loading", false
+			local row = Row.create(view.Template, view.List, function() end)
+			row.Root.Name, row.Root.LayoutOrder = "Loading" .. index, index + 1
 			rows[row.Root.Name] = row
 		end
 		Context.connections:connect(view.Close.Activated, function()
@@ -75,10 +100,14 @@ return function(Context)
 				end
 			end
 			render()
+			View.updateTimer(view, math.max(0, data.ResetsAt - data.ServerTime))
 		end)
 		Context.connections:connect(events.Result.OnClientEvent, function(success, message)
-			table.clear(pending)
+			if not success then
+				table.clear(pending)
+			end
 			render()
+			request()
 			Context.NotificationController.showNotification(if success then "ItemBought" else "CannotPlace", message)
 		end)
 		Context.connections:connect(Context.player:GetAttributeChangedSignal("MyCityPlacementTool"), function()
@@ -100,20 +129,16 @@ return function(Context)
 					render()
 					request()
 				end
-				if view.Root.Visible and snapshot then
+				if snapshot then
 					local remaining =
 						math.max(0, math.ceil(snapshot.ResetsAt - (snapshot.ServerTime + now - receivedAt)))
-					view.Timer.Text = string.format(
-						"New quests in %02d:%02d:%02d",
-						math.floor(remaining / 3600),
-						math.floor(remaining % 3600 / 60),
-						remaining % 60
-					)
+					View.updateTimer(view, remaining)
 					if remaining == 0 then
+						setAlert(false)
 						request()
 					end
 				elseif view.Root.Visible then
-					view.Timer.Text = "Loading your six quests..."
+					View.updateTimer(view, nil)
 					request()
 				end
 				task.wait(1)
@@ -129,6 +154,7 @@ return function(Context)
 		if not view then
 			return
 		end
+		State.FramesFolder.Visible = true
 		if State.currentOpenFrame == view.Root and view.Root.Visible then
 			Context.UIController.closeUIFrame(view.Root)
 		else
@@ -137,6 +163,9 @@ return function(Context)
 		request()
 	end
 	function Context.cleanupDailyQuests()
+		if setAlert then
+			setAlert(false)
+		end
 		for _, row in rows do
 			Row.destroy(row)
 		end
@@ -147,9 +176,11 @@ return function(Context)
 			if State.currentOpenFrame == view.Root then
 				Context.UIController.closeUIFrame(view.Root)
 			end
-			view.Screen:Destroy()
+			view.Root.Visible = false
+			view.Template.Visible = false
 		end
 		view, snapshot, receivedAt = nil, nil, nil
+		lastRequest = -math.huge
 		State.DailyQuestFrame = nil
 	end
 end

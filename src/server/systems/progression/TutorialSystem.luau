@@ -158,7 +158,6 @@ function Tutorial.finishTutorial(player)
 	tutorial.NewPlayer.Value = false
 	tutorial.StarterBuilding.Value = true
 	Analytics.Tutorial.Completed(player)
-	task.spawn(require(script.Parent.PlayerRewards).giveGroupReward, player)
 	return true
 end
 

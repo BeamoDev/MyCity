@@ -205,7 +205,16 @@ print(
 
 local now = 1000000
 local dailyEvents = { ClaimReward = remote(), UpdateUI = remote(), RequestUpdate = remote() }
+local dailySaves = 0
 local dailyRoot = {
+	Parent = {
+		persistence = { PlayerDataModule = {
+			savePlayerData = function()
+				dailySaves += 1
+				return true
+			end,
+		} },
+	},
 	security = { RequestGuard = {
 		ready = function()
 			return true
@@ -240,7 +249,7 @@ for day = 1, 7 do
 		player.Backpack = backpack
 	end
 	assert(dailySystem.claimReward(player))
-	assert(daily.CurrentStreak.Value == day)
+	assert(daily.CurrentStreak.Value == day and dailySaves == day)
 	assert(not dailySystem.claimReward(player), "Daily duplicate claim granted")
 	dailySystem.updatePlayerUI(player)
 	now += 86399

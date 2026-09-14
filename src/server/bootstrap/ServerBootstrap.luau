@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Shutdown = require(script.Parent.Shutdown)
 local Bootstrap = {}
 local started = false
 
@@ -7,11 +8,17 @@ function Bootstrap.start()
 		return
 	end
 	started = true
+	if not Shutdown.start() then
+		return
+	end
 	require(script.Parent.SpawnGuard).start()
 	print("[MyCity] Modular server bootstrap v2")
 	require(ReplicatedStorage:WaitForChild("shared"):WaitForChild("Network")).start()
 	ReplicatedStorage.Events.Loading.IntroFinished.OnServerEvent:Connect(require(script.Parent.SpawnGuard).release)
-	require(script.Parent.WorldRuntime).start()
+	require(script.Parent.WorldRuntime).start(Shutdown.isClosing)
+	if Shutdown.isClosing() then
+		return
+	end
 	local systems = {
 		DailyQuests = require(script.Parent.Parent.systems.progression.DailyQuests),
 		PlayerDataModule = require(script.Parent.Parent:WaitForChild("persistence"):WaitForChild("PlayerDataModule")),
@@ -97,9 +104,15 @@ function Bootstrap.start()
 			"DailyQuests",
 		}
 	do
+		if Shutdown.isClosing() then
+			return
+		end
 		systems[name].init()
 	end
-	require(script.Parent.Parent.systems.social.CityRating).start()
+	if Shutdown.isClosing() then
+		return
+	end
+	task.spawn(require(script.Parent.Parent.systems.social.CityRating).start)
 	require(script.Parent.Parent.systems.social.FriendBoost).start()
 	require(script.Parent.ShopPrompt).start()
 	require(script.Parent.PlayerLifecycle).start(systems)

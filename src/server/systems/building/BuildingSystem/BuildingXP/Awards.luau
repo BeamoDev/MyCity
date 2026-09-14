@@ -21,6 +21,9 @@ return function(Context)
 			return false
 		end
 
+		if type(xpAmount) ~= "number" or xpAmount ~= xpAmount or xpAmount <= 0 or xpAmount == math.huge then
+			return false
+		end
 		local oldLevel = buildingLevel.Value
 		local oldXP = buildingXP.Value
 
@@ -42,56 +45,22 @@ return function(Context)
 			local BuildingSystem = require(script.Parent.Parent)
 			local owner = BuildingSystem.getBuildingOwner(building)
 
-			-- Check for tier transitions
+			local tier
 			if newLevel >= 100 and oldLevel < 100 then
-				Context.applySparkleEffect(building, newLevel)
-				if owner then
-					local levelUpEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingLevelUp")
-					if levelUpEvent then
-						levelUpEvent:FireClient(
-							owner,
-							building:GetAttribute("BuildingType") or "Building",
-							newLevel,
-							"PINK TIER!"
-						)
-					end
-				end
+				tier = "PINK TIER!"
 			elseif newLevel >= 40 and oldLevel < 40 then
-				Context.applySparkleEffect(building, newLevel)
-				if owner then
-					local levelUpEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingLevelUp")
-					if levelUpEvent then
-						levelUpEvent:FireClient(
-							owner,
-							building:GetAttribute("BuildingType") or "Building",
-							newLevel,
-							"DIAMOND TIER! 💎"
-						)
-					end
-				end
+				tier = "DIAMOND TIER!"
 			elseif newLevel >= 20 and oldLevel < 20 then
-				Context.applySparkleEffect(building, newLevel)
-				if owner then
-					local levelUpEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingLevelUp")
-					if levelUpEvent then
-						levelUpEvent:FireClient(
-							owner,
-							building:GetAttribute("BuildingType") or "Building",
-							newLevel,
-							"GOLD TIER! 🏆"
-						)
-					end
-				end
-			elseif newLevel >= 20 then
-				-- Maintain sparkle effect for buildings already above tier thresholds
+				tier = "GOLD TIER!"
+			end
+			if tier then
 				Context.applySparkleEffect(building, newLevel)
 			end
-
-			-- Send normal level up notification
-			if owner then
-				local levelUpEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingLevelUp")
-				if levelUpEvent then
-					levelUpEvent:FireClient(owner, building:GetAttribute("BuildingType") or "Building", newLevel)
+			local tutorial = owner and owner:FindFirstChild("Data") and owner.Data.PlayerInfo:FindFirstChild("Tutorial")
+			if owner and not (tutorial and tutorial.IsInTutorial.Value) then
+				local event = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingLevelUp")
+				if event then
+					event:FireClient(owner, building:GetAttribute("BuildingType") or "Building", newLevel, tier)
 				end
 			end
 

@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Serialization = require(script.Parent.Parent.Parent.services.ToolSerialization)
+local RestoreBudget = require(script.Parent.Parent.Parent.services.RestoreBudget)
 local Inventory = {}
 local restored = {}
 local monitored = {}
@@ -77,26 +78,33 @@ function Inventory.loadInventory(player)
 		end
 	end
 	local prepared = {}
-	for _, entry in inventory:GetChildren() do
-		if entry:IsA("StringValue") then
-			local ok, descriptor = pcall(HttpService.JSONDecode, HttpService, entry.Value)
-			if not ok then
-				return false
-			end
-			if type(descriptor) ~= "table" then
-				return false
-			end
-			if not descriptor.ToolId or not existing[descriptor.ToolId] then
-				local tool = Serialization.decode(descriptor)
-				if not tool then
-					return false
-				end
-				table.insert(prepared, tool)
-				if descriptor.ToolId then
-					existing[descriptor.ToolId] = true
+	local ok, err = pcall(function()
+		for _, entry in inventory:GetChildren() do
+			if entry:IsA("StringValue") then
+				RestoreBudget.checkpoint(player)
+				local descriptor = HttpService:JSONDecode(entry.Value)
+				assert(type(descriptor) == "table", "Malformed inventory record")
+				if not descriptor.ToolId or not existing[descriptor.ToolId] then
+					local tool = Serialization.decode(descriptor)
+					assert(tool, "Unable to restore inventory tool")
+					table.insert(prepared, tool)
+					if descriptor.ToolId then
+						existing[descriptor.ToolId] = true
+					end
 				end
 			end
 		end
+		assert(
+			player.Parent and not player:GetAttribute("MyCityLeaving") and backpack.Parent == player,
+			"Player/backpack changed during inventory restoration"
+		)
+	end)
+	if not ok then
+		for _, tool in prepared do
+			tool:Destroy()
+		end
+		warn("[Inventory] Restore failed for", player.UserId, err)
+		return false
 	end
 	for _, tool in prepared do
 		tool.Parent = backpack

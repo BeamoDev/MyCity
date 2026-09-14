@@ -5,7 +5,7 @@ return function(Context)
 	local INVALID_COLOR = Context.INVALID_COLOR
 	local state = Context.state
 
-	function Context.updateBuildingVisuals()
+	function Context.updateBuildingVisuals(force)
 		if not state.previewBuilding then
 			return
 		end
@@ -18,6 +18,13 @@ return function(Context)
 		end
 
 		local position = state.targetPosition or base.Position
+		local now = os.clock()
+		local unchanged = state.visualPosition == position and state.visualAngle == state.rotationAngle
+		if not force and now < (state.nextVisualCheck or 0) then
+			return
+		end
+		state.nextVisualCheck = now + (if unchanged then 0.1 else 1 / 30)
+		state.visualPosition, state.visualAngle = position, state.rotationAngle
 		local isValid = not Context.checkCollisionAtPosition(position)
 			and Context.isFullyWithinPlotBounds(position)
 			and not Context.isPlacementOnCooldown()
@@ -105,14 +112,21 @@ return function(Context)
 		end
 
 		-- Add ArrowsGUI if available
-		if script.Parent.Parent and script.Parent.Parent:FindFirstChild("ArrowsGUI") then
-			state.arrowsGui = script.Parent.Parent:FindFirstChild("ArrowsGUI"):Clone()
+		local assets = Context.ReplicatedStorage:WaitForChild("Assets")
+		local arrows = assets:FindFirstChild("ArrowsGUI")
+		if arrows then
+			state.arrowsGui = arrows:Clone()
 			state.arrowsGui.Parent = base
+			if state.arrowsGui:IsA("BillboardGui") or state.arrowsGui:IsA("SurfaceGui") then
+				state.arrowsGui.Adornee = base
+				state.arrowsGui.Enabled = true
+			end
 		end
 
 		-- Add BaseSelection if available with Adornee set to base
-		if script.Parent.Parent and script.Parent.Parent:FindFirstChild("BaseSelection") then
-			state.baseSelection = script.Parent.Parent:FindFirstChild("BaseSelection"):Clone()
+		local selection = assets:FindFirstChild("BaseSelection")
+		if selection then
+			state.baseSelection = selection:Clone()
 			state.baseSelection.Adornee = base
 			state.baseSelection.Parent = base
 		end

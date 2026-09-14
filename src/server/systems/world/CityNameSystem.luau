@@ -19,13 +19,18 @@ local RequestCityNameEditEvent = citySignFolder:FindFirstChild("RequestCityNameE
 
 local cityNameCache = {}
 
+local function truncate(text)
+	if type(text) ~= "string" or not utf8.len(text) then
+		return nil
+	end
+	local boundary = utf8.offset(text, 51)
+	return if boundary then text:sub(1, boundary - 1) else text
+end
 local function filterText(text, player)
 	local isStudio = RunService:IsStudio()
 
 	if isStudio then
-		if string.len(text) > 50 then
-			text = string.sub(text, 1, 50)
-		end
+		text = truncate(text)
 		return text
 	end
 
@@ -42,17 +47,22 @@ local function filterText(text, player)
 		if filterSuccess then
 			return finalText
 		else
-			return player.Name .. "'s City!"
+			return nil
 		end
 	else
-		return player.Name .. "'s City!"
+		return nil
 	end
 end
 
 local function updateCitySign(plot, cityName)
-	local playerSign = plot.UI:FindFirstChild("CitySign")
-	if playerSign and playerSign:FindFirstChild("Body") and playerSign.Body:FindFirstChild("SurfaceGui") then
-		playerSign.Body.SurfaceGui.Frame.CityName.Text = cityName
+	local ui = plot:FindFirstChild("UI")
+	local sign = ui and ui:FindFirstChild("CitySign")
+	local body = sign and sign:FindFirstChild("Body")
+	local surface = body and body:FindFirstChild("SurfaceGui")
+	local frame = surface and surface:FindFirstChild("Frame")
+	local label = frame and frame:FindFirstChild("CityName")
+	if label then
+		label.Text = cityName
 	end
 end
 
@@ -69,13 +79,16 @@ local function getPlayerPlot(player)
 end
 
 function CityNameSystem.saveCityName(player, cityName)
-	local success, error = pcall(function()
-		cityNameDataStore:SetAsync(tostring(player.UserId), cityName)
-	end)
-
-	if success then
-		cityNameCache[player.UserId] = cityName
+	for attempt = 1, 3 do
+		local success = pcall(cityNameDataStore.SetAsync, cityNameDataStore, tostring(player.UserId), cityName)
+		if success then
+			return true
+		end
+		if attempt < 3 then
+			task.wait(attempt)
+		end
 	end
+	return false
 end
 
 function CityNameSystem.loadCityName(player)
@@ -83,11 +96,14 @@ function CityNameSystem.loadCityName(player)
 		return cityNameDataStore:GetAsync(tostring(player.UserId))
 	end)
 
-	if success and savedName and savedName ~= "" then
+	if success and type(savedName) == "string" and savedName ~= "" and utf8.len(savedName) then
 		cityNameCache[player.UserId] = savedName
 		return savedName
 	else
-		local defaultName = player.Name .. "'s City!"
+		local data = player:FindFirstChild("Data")
+		local info = data and data:FindFirstChild("PlayerInfo")
+		local previous = info and info:FindFirstChild("CityName")
+		local defaultName = if previous and previous.Value ~= "" then previous.Value else player.Name .. "'s City!"
 		cityNameCache[player.UserId] = defaultName
 		return defaultName
 	end
@@ -108,21 +124,24 @@ function CityNameSystem.setCityName(player, newName, skipSave)
 	end
 
 	local filteredName = filterText(newName, player)
-
-	if string.len(filteredName) > 50 then
-		filteredName = string.sub(filteredName, 1, 50)
+	if not filteredName then
+		return false, "Your city name could not be filtered. Please try again."
 	end
+
+	filteredName = truncate(filteredName) or (player.Name .. "'s City!")
 
 	if string.len(filteredName) == 0 or filteredName == "########" then
 		filteredName = player.Name .. "'s City!"
 	end
 
+	if not skipSave and not CityNameSystem.saveCityName(player, filteredName) then
+		return false, "Your city name could not be saved. Please try again."
+	end
+	if not player.Parent or player:GetAttribute("MyCityLeaving") then
+		return false
+	end
 	cityNameValue.Value = filteredName
 	cityNameCache[player.UserId] = filteredName
-
-	if not skipSave then
-		CityNameSystem.saveCityName(player, filteredName)
-	end
 
 	local plot = getPlayerPlot(player)
 	if plot then
@@ -164,14 +183,21 @@ function CityNameSystem.applyCityNameToPlot(player, plot)
 	end
 end
 
+local started = false
 function CityNameSystem.init()
+	if started then
+		return
+	end
+	started = true
 	UpdateCityNameEvent.OnServerEvent:Connect(function(player, newName)
 		if not newName or type(newName) ~= "string" then
 			return
 		end
 
-		if string.len(newName) > 50 then
-			newName = string.sub(newName, 1, 50)
+		newName = truncate(newName)
+		if not newName then
+			UpdateCityNameEvent:FireClient(player, false, "Please enter a valid city name.")
+			return
 		end
 
 		local success, filteredName = Guard.run(player, "CityName", CityNameSystem.setCityName, newName)
@@ -190,11 +216,6 @@ function CityNameSystem.init()
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
-		local cityName = CityNameSystem.getCityName(player)
-		if cityName and cityName ~= player.Name .. "'s City!" then
-			CityNameSystem.saveCityName(player, cityName)
-		end
-
 		cityNameCache[player.UserId] = nil
 	end)
 end

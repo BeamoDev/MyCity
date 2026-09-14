@@ -59,9 +59,26 @@ model.PrimaryPart = base
 child(model, "Script", "EmbeddedBehavior")
 child(base, "ProximityPrompt", "OldPrompt")
 local frames = 0
-local services = { ServerStorage = storage, ReplicatedStorage = replicated }
+for index = 1, 23 do
+	local copy = model:Clone()
+	copy.Name, copy.Parent = "Building" .. index, models
+end
+local services = {
+	ServerStorage = storage,
+	ReplicatedStorage = replicated,
+	RunService = { Heartbeat = {
+		Wait = function()
+			frames += 1
+		end,
+	} },
+}
 local world = load("src/server/bootstrap/WorldRuntime.luau", {
 	workspace = workspace,
+	os = {
+		clock = function()
+			return 0
+		end,
+	},
 	Instance = r.Instance,
 	game = {
 		GetService = function(_, name)
@@ -79,9 +96,9 @@ local preview = replicated.Assets.BuildingPreviews.Bank
 assert(preview.PrimaryPart and preview.Base.Size == base.Size and preview.Base.Anchored)
 assert(not preview:FindFirstChild("EmbeddedBehavior") and not preview.Base:FindFirstChild("OldPrompt"))
 assert(model:FindFirstChild("EmbeddedBehavior") and model.Base:FindFirstChild("OldPrompt"))
-assert(workspace.Misc.PlayerAnchors and workspace.Misc.PlayerPreviews and workspace.Misc.Effects and frames == 1)
+assert(workspace.Misc.PlayerAnchors and workspace.Misc.PlayerPreviews and workspace.Misc.Effects and frames == 3)
 world.start()
-assert(#replicated.Assets.BuildingPreviews:GetChildren() == 1)
+assert(#replicated.Assets.BuildingPreviews:GetChildren() == 24 and frames == 3)
 print(
 	"PASS: ServerStorage models, stripped client preview copies, unchanged authored templates, idempotent Workspace.Misc folders"
 )
@@ -89,7 +106,7 @@ print(
 local added, removing = signal(), signal()
 local root = child(workspace, "Part", "HumanoidRootPart")
 local character = node({ HumanoidRootPart = root, ChildAdded = signal() })
-local player = node({ Character = character, CharacterAdded = signal(), Parent = true })
+local player = node({ Parent = true, Character = character, CharacterAdded = signal(), Parent = true })
 local players = {
 	PlayerAdded = added,
 	PlayerRemoving = removing,

@@ -82,3 +82,39 @@ record = {
 assert(ledger.process({}, receipt, plan, apply))
 assert(record.PurchaseIntents["42"].PurchaseId == "newer")
 print("PASS: bound-intent receipt ownership and newer pending-target preservation")
+
+-- City likes use a monotonic reward sequence persisted with owner cash.
+record, durable, saves, failAt = {}, {}, 0, 1
+local cash = { Value = 100 }
+local stats = {
+	FindFirstChild = function()
+		return cash
+	end,
+}
+local owner = {
+	leaderstats = stats,
+	FindFirstChild = function()
+		return stats
+	end,
+}
+local socialRoot = { persistence = { PlayerDataModule = Data } }
+local systems = { Parent = socialRoot, security = { RequestGuard = Guard } }
+local rewards = luau.load(
+	fs.readFile("src/server/systems/social/CityLikeRewards.luau"),
+	{
+		environment = {
+			script = { Parent = { Parent = systems } },
+			require = function(m)
+				assert(m)
+				return m
+			end,
+		},
+	}
+)()
+assert(not rewards.settle(owner, 3) and cash.Value == 250 and record.CityLikeRewardSequence == 3)
+assert(not rewards.settle(owner, 3) and cash.Value == 250, "Failed save retried a cash grant twice")
+failAt = nil
+assert(rewards.settle(owner, 4) and cash.Value == 300 and durable.CityLikeRewardSequence == 4)
+assert(not rewards.settle(owner, 2) and cash.Value == 300, "Stale cross-server count reduced watermark")
+assert(not rewards.settle(owner, 0 / 0))
+print("PASS: durable city-like reward watermark, save failure duplicate prevention, catch-up and stale count rejection")

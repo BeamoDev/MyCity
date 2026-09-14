@@ -1,16 +1,9 @@
 -- Match KingdomWars' held miniature, using MyCity's normal building assets.
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Visual = {}
 local MAX_SIZE = 1.7
 local OFFSET = CFrame.new(0, 0.65, 0) * CFrame.Angles(0, math.rad(180), 0)
 
-function Visual.attach(tool, buildingName)
-	local buildings = game:GetService("ServerStorage"):FindFirstChild("Buildings")
-	local template = buildings and buildings:FindFirstChild(buildingName)
-	if not template or not template:IsA("Model") then
-		warn("[ToolFactory] Missing held model: ServerStorage.Buildings." .. buildingName)
-		return
-	end
+local function prepare(template, buildingName)
 	local model = template:Clone()
 	model.Name = "HeldBuildingVisual"
 	-- Remove behavior before the clone enters a replicated container.
@@ -73,10 +66,52 @@ function Visual.attach(tool, buildingName)
 		weld.Name = "HeldBuildingWeld"
 		weld.Part0, weld.Part1, weld.Parent = handle, part, part
 	end
-	handle.Parent = tool
-	model.Parent = tool
+	local container = Instance.new("Folder")
+	handle.Parent, model.Parent = container, container
+	return container
+end
+local cache = {}
+local serial = 0
+function Visual.attach(tool, buildingName)
+	local buildings = game:GetService("ServerStorage"):FindFirstChild("Buildings")
+	local template = buildings and buildings:FindFirstChild(buildingName)
+	if not template or not template:IsA("Model") then
+		warn("[ToolFactory] Missing held model: ServerStorage.Buildings." .. buildingName)
+		return
+	end
+	serial += 1
+	local entry = cache[buildingName]
+	if entry and entry.source ~= template then
+		entry.model:Destroy()
+		cache[buildingName], entry = nil, nil
+	end
+	if not entry then
+		local model = prepare(template, buildingName)
+		if not model then
+			return
+		end
+		entry = { source = template, model = model }
+		cache[buildingName] = entry
+	end
+	entry.used = serial
+	local clone = entry.model:Clone()
+	for _, child in clone:GetChildren() do
+		child.Parent = tool
+	end
+	clone:Destroy()
 	tool.RequiresHandle = true
 	tool.Grip = CFrame.Angles(0, math.rad(90), 0)
 	tool:SetAttribute("HeldBuildingType", buildingName)
+	local count, oldestName, oldest = 0, nil, math.huge
+	for name, value in cache do
+		count += 1
+		if value.used < oldest then
+			oldest, oldestName = value.used, name
+		end
+	end
+	if count > 32 then
+		cache[oldestName].model:Destroy()
+		cache[oldestName] = nil
+	end
 end
 return Visual

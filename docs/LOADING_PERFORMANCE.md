@@ -1,5 +1,8 @@
 # City loading and runtime performance
 
+**2026-09-10 update:** See [SYSTEM_HARDENING.md](SYSTEM_HARDENING.md) for the latest fixes, approved gameplay changes and verification limits. The dated findings below describe earlier source; client ambient rendering, shared simulation scheduling, income caching, best service coverage, city-preserving Store/rebirth and paid-target recovery now supersede the corresponding recommendations.
+
+
 Implemented against local MyCity source on 2026-09-09. No Studio server, device, MicroProfiler capture or published place was available. All figures below are source operation counts or removed explicit waits, not measured speedups.
 
 ## Changes
@@ -32,3 +35,11 @@ All 20 `tools/test_*.luau` scripts must pass alongside `validate_source.luau`, `
 Test a large saved city with several clients joining simultaneously, then normal placement/deletion, near-complete constructions, owner tutorial replay and departure halfway through loading. Confirm the loading intro remains active until MyCityLoaded and all expected city objects appear. Compare server frame times, loading duration and client frame times before/after on the same city and device.
 
 Remaining costs need real measurements: individual authored model clone complexity, meshes/textures and replication bursts, all-world rendering, held inventory model cloning, server-driven traffic/construction effects, civilian geometry/pathfinding and per-building XP tasks. Service/decor-heavy cities still have proportional distance work (all decorations is a worst-case quadratic arrangement). First uncached ownership checks and DataStore requests still depend on Roblox service latency. This pass does not promise zero lag or change streaming settings, model appearance, save schema, cash or income formulas. Consider client-local cosmetic traffic and asset LOD only after measuring their impact and validating authored appearance/streaming behavior.
+
+## Additional ambient and startup changes (2026-09-09)
+
+- AmbientTraffic shares one Heartbeat between cars/trains and moves each complete model once per frame. Train PrimaryPart tweens, per-vehicle connection maps and uncancelled spawn tasks are removed. Server model transforms still replicate; client-only ambient rendering remains a possible future bandwidth optimization requiring separate streaming/device work.
+- Startup BuildingPreviews uses six-model / 3ms work slices with large-descendant checkpoints. For a mocked 24-small-template catalog this reduces forced waits from 24 to 3; expensive individual Clone operations remain indivisible.
+- Inventory decoding/tool creation uses the same RestoreBudget as city restoration and cleans staged instances on failed/canceled restoration. Publishing validated tools still happens together so consumers do not observe a partially restored inventory.
+
+Full local tests and source audits pass. Benchmark cold-start readiness, large inventory joins, simultaneous city restores and server/network frame time in Studio before attributing a real FPS/load-time gain.

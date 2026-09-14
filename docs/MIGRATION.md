@@ -1,5 +1,28 @@
 # Applying the MyCity refactor in Studio
 
+## Shutdown follow-up (2026-09-10)
+
+Also sync `src/server/bootstrap/Shutdown.luau` as the ModuleScript `ServerScriptService.server.bootstrap.Shutdown`, alongside ServerBootstrap, PlayerLifecycle, SpawnGuard, WorldRuntime, PlayerDataModule and PlotManager.Assignment. Shutdown registration now runs before startup can yield. Start a fresh Play session, then test stopping during loading and after a normal join. No authored asset or datastore migration is needed for this fix.
+
+
+## Hardening sync ? 2026-09-10
+
+Sync the complete server/client/shared source roots together and restart Studio Play. New ModuleScripts:
+
+- `ServerScriptService.server.services.SimulationScheduler`
+- `ServerScriptService.server.systems.economy.IncomeSystem.CityCache`
+- `ServerScriptService.server.systems.social.CityLikeRewards`
+- `StarterPlayer.StarterPlayerScripts.client.controllers.world.AmbientTrafficController` (or the existing direct client-root mapping)
+- `ReplicatedStorage.shared.visuals.AmbientModel`
+- `ReplicatedStorage.shared.visuals.AmbientTrip`
+
+The server creates `ReplicatedStorage.Runtime.AmbientTraffic` route descriptors. The client creates `Workspace.Misc.AmbientVehicles` cosmetic models. Keep authored `Assets.Trains`, `Assets.CarTemplates` and the existing route points. Do not leave independent old train/car movers active. No new authored GUI or gameplay model is required by this pass. The existing `AmbientTraffic.Model` module is a compatibility wrapper around the shared sanitizer.
+
+The authored Delete button displays Store; keep its instance name. Rebirth's cash reset and preserved city remain. No schema/namespace reset is needed. Preserve new top-level `PendingReceipts` and `CityLikeRewardSequence` alongside existing receipt/transfer metadata; CityRatings gains `rewardSequence` for new likes. Never remove deduplication fields to repair an unresolved receipt. Owner 1790165114 still intentionally starts with fresh gameplay each join.
+
+Run both read-only Studio audits, then the integration scenarios in [SYSTEM_HARDENING.md](SYSTEM_HARDENING.md). This migration has not been run against Studio, and no place was published.
+
+
 The source is now organized like the Wordie pattern: one server entry, one client entry, and feature folders with child modules. The authored models and GUI templates also need to follow the moved modules. The migration has been generated locally; it has not been run in your place.
 
 ## Edit-mode migration
@@ -195,3 +218,42 @@ Sync the complete server.systems.world.CivilianSystem module and its children, t
 Sync client.controllers.ui.UIController including updated Buttons, Lifecycle, Navigation and the complete DailyQuests module. DailyQuests now includes the NEW ButtonBinding ModuleScript child alongside View, QuestRow and Widgets. Restart Play so cached modules reload. There is no authored quest panel to add: the code creates PlayerGui.MyCityDailyQuests with a DailyQuests frame and six cards. The old HUD.Frames.DailyQuests runtime location is superseded.
 
 Quests GuiButtons anywhere under HUD.Buttons bind automatically and enable input. After the main tutorial, click Quests while post-tutorial objectives are active; the panel should open at full size, show six loading/quest rows and close with X or another menu. It follows HUD.Enabled, cleans up on HUD replacement, and remains blocked during active building placement/main tutorial. Local event/navigation tests pass; Studio verification is pending.
+
+## Post-tutorial group reward
+
+Sync server.bootstrap.PlayerLifecycle, server.systems.progression.PlayerRewards and TutorialSystem, plus client.controllers.ui.NotificationController.RemoteBindings; restart Play. No assets/remotes/schema changes are required. A member of group 1050526813 with an unclaimed reward receives one PoliceStation tool after the main tutorial and sees 'Group reward: Police Station'. A completed returning member can receive an unclaimed reward after the intro. Previously claimed normal profiles are not re-granted; the configured owner fresh-profile reset allows retesting each join.
+
+## Latest: use the authored Quests frame
+
+Sync UIController.DailyQuests with init, View, QuestRow, ButtonBinding and NEW ClaimStyle. Widgets is retired and can be removed from the synced DailyQuests module. Restart Play. The code no longer creates MyCityDailyQuests; it removes only tagged legacy generated screens when binding.
+
+Keep HUD.Frames.Quests.Frame with Header (TextLabel may be nested under Pattern), Content (ScrollingFrame with UIListLayout and Top/Bottom padding frames), Template and X. Template needs Title, Difficulty, Reward and Progress TextLabels, a separate Progress Frame containing Fill, and Claim with TextLabel/UIGradient/UIStroke. Keep Template hidden in Studio. Six clones appear directly under Content, orders 1-6; padding frames stay at 0/7. Header example: Daily Quests (19H 20M). Ready Claim restores stroke 31,106,40 and gradient #44ff0b -> #aeff45; all unavailable states are grey. No UI LocalScript is required.
+
+## Latest UIController asset locations
+
+Keep IncomeBoostTemp, PopulationBoostTemp, BuildingTemp and WeatherTemplate directly under ReplicatedStorage.Assets. Sync UIController.RebirthConfirmation and UIController.remotes.Weather, then restart Play. Rebirth cards retain their Now/Next or BuildingName/BuildingIcon children; WeatherTemplate retains Label/Icon. No copies are required under UIController. The daily quests template remains at HUD.Frames.Quests.Frame.Template.
+
+## Placement, tutorial, XP and prompt asset relocation
+
+Sync ToolsModule.Session.Preview, TutorialController.Guidance, ProximityPromptController.Renderer and server BuildingSystem.BuildingXP.Effects, then restart Play. Keep these directly under ReplicatedStorage.Assets: ArrowsGUI, BaseSelection, TutorialBeamAnchor (with AnchorAttachment), BeamTemplate, SparklesGold, SparklesBlue and SparklesPink. Any themed prompt BillboardGui is also read directly from Assets using the prompt's Theme attribute; Default remains there too. No cosmetic copies are required under the scripts.
+
+SellTool.Frame.ToolItem.ItemName is still the live sell UI label and stays in the HUD. An unused moved ItemName/PlacementHighlight template does not need wiring: current exported code does not clone either from a script. Placement land highlights are generated by the existing session code. Studio audit paths have been updated for the moved active templates.
+
+## Quest priority and padding correction
+
+Sync DailyQuests init and View. Keep Content.Top at LayoutOrder 1 and Content.Bottom at 100. The six quest clones use only 2-7, sorted claimable first, unfinished by highest progress percentage, then claimed. Loading cards also use 2-7. Earlier documented padding orders 0/7 are superseded.
+
+## Train/car movement and loading performance follow-up
+
+Sync the server tree, including new systems.world.AmbientTraffic ModuleScript with Model and Routes children, updated TrainSystem/HighwayTrafficSystem, bootstrap.WorldRuntime and economy.InventorySystem. Restart Play to discard the previous train tweens and vehicle spawn loops. No authored assets, remotes or data migrations are required.
+
+Keep Assets.Trains.Train and Assets.CarTemplates, Map.Enviorment.TrainSystem.Points (1-4), and RoadSystem.Points (3-6). ActiveTrains/ActiveCars folders are reused or created. Verify that all train carriages move together without flashing, only one train uses each route, cars keep their authored lane orientation, and stop/restart does not double spawning. Clone parts are anchored/noncolliding and embedded scripts/prompts are removed; the source models stay unchanged. Vehicles remain server-driven cosmetic models.
+
+For loading, test a cold server with the full building catalog and simultaneous players with large cities/inventories. Local mock tests show reduced forced startup frame waits and budgeted inventory preparation; actual Studio timing/visual checks are pending.
+
+
+## Claim badges and authored rebirth cards
+
+Sync UIController including the new ClaimAlerts ModuleScript, DailyRewards, DailyQuests/init, RebirthRewards and RebirthConfirmation, plus NotificationController and ConstructionTimer/Timing. Keep the authored DailyReward and Quests button children named Alerts (plural); no new badge instances are generated. Keep IncomeBoostTemp, PopulationBoostTemp and BuildingTemp directly in ReplicatedStorage.Assets. An authored XPBoostTemp with Now/Next labels is optional; without it no XP card is inserted. Rebirth uses its existing UIListLayout and adds no generated headings, summary or fallback labels.
+
+Restart Play and verify: construction starts produce no notification; claimable daily rewards/quests show their button Alerts and claimed rewards clear them; closed panels still refresh on daily expiry; rebirth only shows cloned authored cards. No save migration is needed. Studio validation has not been run locally.

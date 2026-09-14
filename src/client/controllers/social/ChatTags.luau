@@ -12,6 +12,22 @@ function Controller.start()
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 	require(ReplicatedStorage:WaitForChild("shared"):WaitForChild("Network")).wait()
 
+	local membership = {}
+	local function cacheMembership(player)
+		local ok, member = pcall(player.IsInGroup, player, 1050526813)
+		if player.Parent then
+			membership[player.UserId] = if ok then member else false
+		end
+	end
+	Players.PlayerAdded:Connect(function(player)
+		task.spawn(cacheMembership, player)
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		membership[player.UserId] = nil
+	end)
+	for _, player in Players:GetPlayers() do
+		task.spawn(cacheMembership, player)
+	end
 	local SYSTEM_ALERTS = {
 		" Higher level buildings generate more income!",
 		" Remember to collect your buildings regularly for maximum profit!",
@@ -124,9 +140,13 @@ function Controller.start()
 			and message.Text:sub(1, 5) == "!cmd-"
 		then
 			local command = message.Text:sub(6)
-			local RemoteEvent = game.ReplicatedStorage.ControlPanel.Events:WaitForChild("CommandEvent")
-			RemoteEvent:FireServer(command)
-			return true
+			local panel = ReplicatedStorage:FindFirstChild("ControlPanel")
+			local events = panel and panel:FindFirstChild("Events")
+			local remote = events and events:FindFirstChild("CommandEvent")
+			if remote and remote:IsA("RemoteEvent") then
+				remote:FireServer(command)
+				return true
+			end
 		end
 		return false
 	end
@@ -157,7 +177,7 @@ function Controller.start()
 				or plr.UserId == 123315075
 			then
 				tag = "<font color='rgb(255, 126, 249)'>[STAFF]</font> "
-			elseif plr:IsInGroup(1050526813) then
+			elseif membership[plr.UserId] then
 				tag = "<font color='rgb(108, 255, 98)'>[MEMBER]</font> "
 			elseif plr.MembershipType == Enum.MembershipType.Premium then
 				tag = "<font color='rgb(180, 180, 180)'>[PREMIUM]</font> "
@@ -168,7 +188,7 @@ function Controller.start()
 				properties.PrefixText = message.PrefixText
 			end
 			if onMessageReceived(message) then
-				message.Text = ""
+				properties.Text = ""
 			end
 		end
 		return properties

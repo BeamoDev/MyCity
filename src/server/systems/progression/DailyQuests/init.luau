@@ -38,10 +38,17 @@ function Service.record(player, metric, amount)
 		return
 	end
 	local board, refreshed = boardFor(player)
-	if board and (Board.progress(board, metric, amount) or refreshed) then
+	local changed, completed = false, false
+	if board then
+		changed, completed = Board.progress(board, metric, amount)
+	end
+	if board and (changed or refreshed) then
 		local session = sessions[player]
 		if session then
 			session.dirty = true
+			if completed then
+				session.nextSync = 0
+			end
 		end
 	end
 end
@@ -97,8 +104,8 @@ function Service.init()
 					then string.format("Quest complete! +$%d", reward)
 					else "Reward credited. Saving will retry automatically."
 			end
-			events.Result:FireClient(player, reward ~= nil, message)
 			Service.syncPlayer(player)
+			events.Result:FireClient(player, reward ~= nil, message)
 		end)
 	end)
 	Players.PlayerRemoving:Connect(Service.cleanup)
@@ -112,7 +119,8 @@ function Service.init()
 						session.cityDirty = true
 					end
 					session:step(os.time())
-					if session.dirty or refreshed then
+					if refreshed or (session.dirty and os.clock() >= (session.nextSync or 0)) then
+						session.nextSync = os.clock() + 5
 						session.dirty = false
 						Service.syncPlayer(player)
 					end

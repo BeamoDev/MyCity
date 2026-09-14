@@ -104,11 +104,13 @@ local storage = {
 	shared = { Network = network },
 	Events = {
 		Loading = {
-			IntroFinished = { OnServerEvent = {
-				Connect = function()
-					table.insert(order, "release binding")
-				end,
-			} },
+			IntroFinished = {
+				OnServerEvent = {
+					Connect = function()
+						table.insert(order, "release binding")
+					end,
+				},
+			},
 		},
 	},
 }
@@ -126,6 +128,15 @@ local bootstrap = load("src/server/bootstrap/ServerBootstrap.luau", {
 	},
 	script = {
 		Parent = {
+			Shutdown = {
+				start = function()
+					table.insert(order, "shutdown")
+					return true
+				end,
+				isClosing = function()
+					return false
+				end,
+			},
 			SpawnGuard = spawn,
 			WorldRuntime = {
 				start = function()
@@ -143,7 +154,7 @@ local bootstrap = load("src/server/bootstrap/ServerBootstrap.luau", {
 local ok, err = pcall(bootstrap.start)
 assert(not ok and string.find(err, "stop after world", 1, true))
 assert(
-	table.concat(order, ",") == "spawn,network,release binding,world",
+	table.concat(order, ",") == "shutdown,spawn,network,release binding,world",
 	"Remote creation still waits for preview assets"
 )
 print(
