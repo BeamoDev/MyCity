@@ -36,6 +36,7 @@ local LIMITED_BUILDINGS = {
 }
 
 local RESET_INTERVAL = 300 -- 5 minutes
+local EPIC_MAX_MISSES = 3 -- The next stock generation guarantees availability.
 local PRICE_TIERS = {
 	[7] = 3375058573,
 	[15] = 3375058621,
@@ -68,6 +69,7 @@ local Context = {
 	STOCK_RANGES = STOCK_RANGES,
 	LIMITED_BUILDINGS = LIMITED_BUILDINGS,
 	RESET_INTERVAL = RESET_INTERVAL,
+	EPIC_MAX_MISSES = EPIC_MAX_MISSES,
 	PRICE_TIERS = PRICE_TIERS,
 	playerShopStocks = playerShopStocks,
 	purchaseDebounce = purchaseDebounce,

@@ -1,5 +1,17 @@
 # MyCity backend audit and refactor
 
+## Epic stock availability (2026-09-20)
+
+The supplied feedback describes four missed Shopping Mall restocks. Source confirmed that the Mall's limited-building override gave only a 26.7% chance of positive stock (60% immediate rejection, then a uniform 0–2 roll). Four consecutive misses had about a 28.9% probability. This supports the complaint without proving which published version the player used.
+
+All Epic buildings now take the Epic branch before the limited-building override: 65% positive-stock chance and 2–6 copies. Three consecutive empty generations guarantee positive stock on the fourth. The threshold is EPIC_MAX_MISSES=3 in ShopSystem/init.luau. Each player's Data.ShopEpicMisses stores a separate IntValue per Epic. Positive stock resets the streak immediately; buying all available copies is not a failed restock. Existing stock generation on join/manual resets counts; ordinary shop snapshots, stat changes and rebirth synchronization reuse current stock. Locked buildings still roll but retain their eligibility requirements. There is no offline accrual.
+
+DataSchema creates the empty dynamic folder for old/new profiles; existing recursive profile encoding persists counters with normal autosave/departure saves. Normal rejoin preserves progress, subject to the existing save guarantees; an unsaved crash can lose recent progress. The requested owner fresh-profile reset continues to reset gameplay counters. No new DataStore, schema-version change or authored object is required. Pre-load and departing-player stock generation is skipped; ClientReady supplies the first snapshot after profile readiness. Non-Epic stock rules, the 300-second timer, costs and purchase validation remain unchanged. Land expansion is outside this change.
+
+Validation: test_shop_stock forces unsuccessful rolls for all actual Epic catalogue entries and executes the fourth-roll guarantee, stock quantity/chance boundaries, early-success reset, per-player/per-building isolation, stable repeated snapshots/rebirth sync, unchanged Mall eligibility and non-Epic limited behavior, pre-load/departure refusal and actual codec/schema save/rejoin. Eleven suites pass: shop_stock, network, startup, persistence, receipts, security, cleanup, progression, data_schema, gameplay_audit and refactor_regressions. Compilation passes for 266 source and 46 tooling files; path/helper audits pass.
+
+Studio procedure: sync server.systems.economy.ShopSystem with all children and server.persistence.PlayerDataModule.DataSchema, then start fresh servers. With an ordinary loaded test player, verify the Mall unlock still requires 35,000 population and costs 500,000 cash. In a disposable Play session, set Data.ShopEpicMisses.Mall.Value to 3 on the server and call ShopSystem.resetPlayerShop(player); confirm 2–6 Mall stock and counter 0. Reopen the UI and verify the same stock. Test a normal saved leave/rejoin and two players with different counters. Do not use the owner fresh-profile account to verify retained gameplay counters. Real storage, authored shop display and published behavior remain unverified; no publish was performed.
+
 ## Repeated join refusal recovery (2026-09-14)
 
 The report is a screenshot of a player saying the city-load/rejoin message repeats. The user has no affected username or server error, so the player's specific root cause remains unconfirmed. The current standalone tree has 266 source files.

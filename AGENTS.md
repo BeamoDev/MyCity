@@ -1,5 +1,13 @@
 # MyCity project handoff
 
+## Epic stock availability (2026-09-20)
+
+All Epic buildings, including Shopping Mall and other names in LIMITED_BUILDINGS, now use the regular Epic stock rule: 65% positive-stock chance, 2–6 copies. After three consecutive zero-stock generations for a building, the next generation guarantees 2–6. Positive availability resets that building's streak, regardless of purchase. Other rarities, unlocks, costs and the five-minute timer are unchanged.
+
+DataSchema adds the empty dynamic Data.ShopEpicMisses folder; per-building IntValues save through the existing Data_1/profile codec, with schema 5 retained. Existing saves gain the folder without replacing gameplay data. Normal save/rejoin retains streaks; the explicit owner fresh-profile reset still resets them. Initial join stock and explicit shop resets count as generations; repeated snapshots/stat/rebirth sync do not. No offline restocks accrue. Stock generation waits for MyCityLoaded and refuses departure, so early join/timer callbacks cannot overwrite restored counters. Sync the entire ShopSystem ModuleScript with its children and PlayerDataModule.DataSchema together, then start fresh servers.
+
+Validation: new test_shop_stock executes actual shop modules/config plus schema/codec for every Epic, exact miss threshold, per-player/per-building isolation, normal stock reset, snapshot stability, unchanged unlocks/non-Epic stock, loading/departure and save/rejoin. It and ten relevant regression suites pass; all 266 source / 46 tooling files compile and path/helper audits pass. No Studio or live storage verification was performed. See docs/BUG_AUDIT.md for the Play procedure.
+
 Updated 2026-09-14. Root: `Active Games/MyCity`, the standalone city-building game.
 This is not the historical KingdomWars campaign checkout named MyCity.
 

@@ -18,6 +18,7 @@ function Schema.CreateDefault(playerName, now)
 		PlayerData = {
 			Inventory = {},
 			OwnedTiles = {},
+			ShopEpicMisses = {},
 			CurrentBuildings = {},
 			CurrentConstructions = {},
 			PlotInfo = { Plot = number(0) },

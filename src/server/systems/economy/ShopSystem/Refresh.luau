@@ -9,7 +9,11 @@ return function(Context)
 
 	function ShopSystem.resetPlayerShop(player)
 		-- Reset specific player's shop
-		playerShopStocks[player.UserId] = Context.generatePlayerStock()
+		local stock = Context.generatePlayerStock(player)
+		if not stock then
+			return
+		end
+		playerShopStocks[player.UserId] = stock
 
 		local shopView = Context.getPlayerShopView(player)
 		local timeRemaining = math.max(0, RESET_INTERVAL - (tick() - State.lastResetTime))
@@ -21,7 +25,11 @@ return function(Context)
 
 		-- Reset each player's shop individually
 		for _, player in pairs(Players:GetPlayers()) do
-			playerShopStocks[player.UserId] = Context.generatePlayerStock()
+			local stock = Context.generatePlayerStock(player)
+			if not stock then
+				continue
+			end
+			playerShopStocks[player.UserId] = stock
 			local shopView = Context.getPlayerShopView(player)
 			ShopEvent:FireClient(player, "ResetShop", shopView, RESET_INTERVAL, false)
 		end

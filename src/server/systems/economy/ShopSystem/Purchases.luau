@@ -48,8 +48,11 @@ return function(Context)
 		-- Get player's specific stock
 		local playerStock = playerShopStocks[player.UserId]
 		if not playerStock then
-			playerShopStocks[player.UserId] = Context.generatePlayerStock()
+			playerShopStocks[player.UserId] = Context.generatePlayerStock(player)
 			playerStock = playerShopStocks[player.UserId]
+		end
+		if not playerStock then
+			return false
 		end
 
 		local tutorial = player.Data.PlayerInfo:FindFirstChild("Tutorial")

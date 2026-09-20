@@ -22,7 +22,16 @@ return function(Context)
 		return false
 	end
 
-	function Context.getStockForBuilding(buildingName, info)
+	function Context.getStockForBuilding(buildingName, info, misses)
+		-- Every Epic follows the same rule, including names in the limited list.
+		if info.Rarity == "Epic" then
+			local range = STOCK_RANGES.Epic
+			if misses < Context.EPIC_MAX_MISSES and math.random() < range.outOfStockChance then
+				return 0
+			end
+			return math.random(range.min, range.max)
+		end
+
 		-- Limited buildings get special stock
 		if Context.isLimitedBuilding(buildingName) then
 			if math.random() < 0.6 then
@@ -46,12 +55,37 @@ return function(Context)
 		return math.random(range.min, range.max)
 	end
 
-	function Context.generatePlayerStock()
+	function Context.generatePlayerStock(player)
+		-- Join callbacks and timer resets can arrive before profile restoration.
+		-- Never roll against temporary defaults or overwrite a restored streak.
+		if not player.Parent or not player:GetAttribute("MyCityLoaded") or player:GetAttribute("MyCityLeaving") then
+			return nil
+		end
+		local data = player:FindFirstChild("Data")
+		local counters = data and data:FindFirstChild("ShopEpicMisses")
+		if not counters then
+			return nil
+		end
 		local config = Context.getBuildingConfig()
 		local newStock = {}
 
 		for buildingName, info in pairs(config) do
-			local stock = Context.getStockForBuilding(buildingName, info)
+			local counter, misses = nil, 0
+			if info.Rarity == "Epic" then
+				counter = counters:FindFirstChild(buildingName)
+				if not counter or not counter:IsA("IntValue") then
+					if counter then
+						counter:Destroy()
+					end
+					counter = Instance.new("IntValue")
+					counter.Name, counter.Parent = buildingName, counters
+				end
+				misses = math.clamp(counter.Value, 0, Context.EPIC_MAX_MISSES)
+			end
+			local stock = Context.getStockForBuilding(buildingName, info, misses)
+			if counter then
+				counter.Value = if stock > 0 then 0 else misses + 1
+			end
 
 			newStock[buildingName] = {
 				Name = buildingName,

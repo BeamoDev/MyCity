@@ -20,10 +20,13 @@ return function(Context)
 	function Context.getPlayerShopView(player)
 		-- Get or create player's stock
 		if not playerShopStocks[player.UserId] then
-			playerShopStocks[player.UserId] = Context.generatePlayerStock()
+			playerShopStocks[player.UserId] = Context.generatePlayerStock(player)
 		end
 
 		local playerStock = playerShopStocks[player.UserId]
+		if not playerStock then
+			return nil
+		end
 		local playerRebirths, playerPopulation = Context.getPlayerStats(player)
 		local shopView = {}
 
@@ -57,6 +60,9 @@ return function(Context)
 
 	function Context.sendShopUpdate(player)
 		local shopView = Context.getPlayerShopView(player)
+		if not shopView then
+			return
+		end
 		local timeRemaining = math.max(0, RESET_INTERVAL - (tick() - State.lastResetTime))
 		ShopEvent:FireClient(player, "UpdateShop", shopView, timeRemaining, true)
 	end

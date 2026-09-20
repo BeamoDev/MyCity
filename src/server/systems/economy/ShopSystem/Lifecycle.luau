@@ -32,9 +32,7 @@ return function(Context)
 
 		-- Handle new players
 		Players.PlayerAdded:Connect(function(player)
-			-- Generate fresh stock for new player
-			playerShopStocks[player.UserId] = Context.generatePlayerStock()
-
+			-- ClientReady requests stock after restoration if this early update skips it.
 			task.wait(2)
 			Context.sendShopUpdate(player)
 
