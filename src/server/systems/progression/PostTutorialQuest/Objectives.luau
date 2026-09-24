@@ -9,9 +9,22 @@ return function(Context)
 		return if state and not state.completed then state else nil
 	end
 	function API.onConstructionStarted() end -- Completion owns this milestone.
+	local function kind(state)
+		local quest = Context.QUESTS[state.step]
+		return quest and quest.kind
+	end
+	-- Re-measures a state-based quest (buildings, roads, population, cash, rebirths, land).
+	function API.refresh(player)
+		local state = current(player)
+		if state and kind(state) ~= "collect" and kind(state) ~= "construct" then
+			if Context.recalculateProgress(player) then
+				Context.completeQuest(player)
+			end
+		end
+	end
 	function API.onIncomeCollected(player)
 		local state = current(player)
-		if state and state.step == 1 then
+		if state and kind(state) == "collect" then
 			Context.updateProgress(player, 1)
 		end
 	end
@@ -30,18 +43,15 @@ return function(Context)
 			return
 		end
 		seen[id] = true
-		if state.step == 2 and not Context.isRoad(model) then
-			Context.updateProgress(player, 1)
-		elseif state.step == 3 or state.step == 4 then
-			if Context.recalculateProgress(player) then
-				Context.completeQuest(player)
+		if kind(state) == "construct" then
+			if not Context.isRoad(model) then
+				Context.updateProgress(player, 1)
 			end
+		else
+			API.refresh(player)
 		end
 	end
 	function API.onPopulationChanged(player)
-		local state = current(player)
-		if state and state.step == 5 and Context.recalculateProgress(player) then
-			Context.completeQuest(player)
-		end
+		API.refresh(player)
 	end
 end

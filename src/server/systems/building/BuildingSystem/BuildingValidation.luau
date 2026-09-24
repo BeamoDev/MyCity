@@ -2,6 +2,7 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Guard = require(script.Parent.Parent.Parent.security.RequestGuard)
 local Range = require(ReplicatedStorage.shared.util.PlacementRange)
+local Rules = require(ReplicatedStorage.shared.util.PlacementRules)
 local Validation = {}
 
 function Validation.getPlot(player)
@@ -50,7 +51,7 @@ function Validation.placement(player, cframe, tool)
 	local plot = Validation.getPlot(player)
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not root or not Range.isNear(root.Position, plot) then
-		return false
+		return false, "TooFar"
 	end
 	local template = game:GetService("ServerStorage").Buildings:FindFirstChild(tool.Name)
 	local base = template and (template:FindFirstChild("Base") or template:FindFirstChild("Hitbox"))
@@ -58,61 +59,16 @@ function Validation.placement(player, cframe, tool)
 		return false
 	end
 	local baseCFrame = cframe * template.PrimaryPart.CFrame:ToObjectSpace(base.CFrame)
-	local half = base.Size / 2
-	local owned = plot.Land.Owned:GetChildren()
-	local function onOwned(point, checkHeight)
-		for _, tile in owned do
-			if tile:IsA("BasePart") then
-				local position = tile.CFrame:PointToObjectSpace(point)
-				if
-					math.abs(position.X) <= tile.Size.X / 2 + 0.01
-					and math.abs(position.Z) <= tile.Size.Z / 2 + 0.01
-				then
-					if
-						not checkHeight
-						or math.abs(baseCFrame.Position.Y - (tile.Position.Y + tile.Size.Y / 2)) < 0.1
-					then
-						return true
-					end
-				end
-			end
-		end
-		return false
+	local tiles = Rules.ownedTiles(plot)
+	-- Base must rest on the owned tile under its centre.
+	local centreTile = Rules.tileAt(tiles, baseCFrame.Position)
+	if not centreTile then
+		return false, "OutsideLand"
 	end
-	if not onOwned(baseCFrame.Position, true) then
-		return false
+	if math.abs(baseCFrame.Position.Y - (centreTile.Position.Y + centreTile.Size.Y / 2)) >= 0.1 then
+		return false, "Height"
 	end
-	-- Sample the whole footprint so gaps between owned tiles cannot be bridged.
-	local stepsX, stepsZ = math.max(1, math.ceil(base.Size.X)), math.max(1, math.ceil(base.Size.Z))
-	for x = 0, stepsX do
-		for z = 0, stepsZ do
-			if
-				not onOwned(
-					baseCFrame:PointToWorldSpace(
-						Vector3.new(-half.X + base.Size.X * x / stepsX, 0, -half.Z + base.Size.Z * z / stepsZ)
-					),
-					false
-				)
-			then
-				return false
-			end
-		end
-	end
-	local overlap = OverlapParams.new()
-	overlap.FilterType = Enum.RaycastFilterType.Include
-	overlap.FilterDescendantsInstances = { plot.Buildings.Placed, plot.Buildings.Construction, plot.Land.Locked }
-	for _, part in
-		Workspace:GetPartBoundsInBox(
-			baseCFrame,
-			Vector3.new(math.max(0.01, base.Size.X - 0.2), base.Size.Y, math.max(0.01, base.Size.Z - 0.2)),
-			overlap
-		)
-	do
-		if part.Name == "Base" or part.Name == "Hitbox" or part:IsDescendantOf(plot.Land.Locked) then
-			return false
-		end
-	end
-	return true
+	return Rules.check(plot, baseCFrame, base.Size)
 end
 
 return Validation

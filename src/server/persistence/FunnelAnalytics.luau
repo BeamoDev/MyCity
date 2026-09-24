@@ -35,7 +35,8 @@ end
 
 -- Tutorial funnel tracking (uses OnboardingFunnelStepEvent)
 function FunnelAnalytics.trackTutorialStep(player, stepNumber, stepName)
-	if TutorialConfig.ReplayEveryJoin and player.UserId == TutorialConfig.OwnerUserId then
+	-- The owner's test sessions never count toward the tutorial funnel.
+	if player.UserId == TutorialConfig.OwnerUserId then
 		return
 	end
 	local ok, err = pcall(AnalyticsService.LogOnboardingFunnelStepEvent, AnalyticsService, player, stepNumber, stepName)

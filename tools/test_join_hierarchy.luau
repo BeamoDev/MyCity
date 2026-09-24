@@ -55,9 +55,18 @@ local models = child(storage, "Folder", "Buildings")
 local model = child(models, "Model", "Bank")
 local base = child(model, "Part", "Base")
 base.Size = r.Vector3.new(5, 1, 5)
+base.CFrame = r.CFrame.new(10, 0.5, 20) * r.CFrame.Angles(0, math.rad(90), 0)
 model.PrimaryPart = base
+local tower = child(child(model, "Folder", "Build"), "Part", "Tower")
+tower.Size, tower.Anchored = r.Vector3.new(3, 8, 3), true
+tower.CFrame = base.CFrame * r.CFrame.new(0, 4.5, 0)
 child(model, "Script", "EmbeddedBehavior")
 child(base, "ProximityPrompt", "OldPrompt")
+local assets0 = child(replicated, "Folder", "Assets")
+local hitboxAssets = child(assets0, "Folder", "Hitbox")
+child(child(hitboxAssets, "Attachment", "PlaceVFX"), "ParticleEmitter", "Burst")
+child(hitboxAssets, "Attachment", "VFX")
+child(assets0, "BillboardGui", "IncomeAlert").Enabled = true
 local frames = 0
 for index = 1, 23 do
 	local copy = model:Clone()
@@ -72,7 +81,34 @@ local services = {
 		end,
 	} },
 }
+-- Non-building models kept in ServerStorage.Buildings (e.g. PlotScenary) are left alone.
+local scenery = child(models, "Model", "PlotScenary1")
+local sceneryPart = child(scenery, "Part", "Tree")
+sceneryPart.Anchored = true
+scenery.PrimaryPart = sceneryPart
+local warnings = {}
+local templates = load("src/server/services/BuildingTemplates.luau", {
+	Instance = r.Instance,
+	Vector3 = r.Vector3,
+	CFrame = r.CFrame,
+	Enum = r.Enum,
+	warn = function(message)
+		table.insert(warnings, message)
+	end,
+})
+local siteBase = child(child(child(assets0, "Folder", "Constructions"), "Model", "5x5"), "Part", "Base")
+siteBase.Size = r.Vector3.new(5, 1, 5)
+local catalogue = { Bank = { Size = "5x5" }, Ghost = { Size = "5x5" } }
+for index = 1, 23 do
+	catalogue["Building" .. index] = { Size = if index == 23 then "9x9" else "5x5" }
+end
 local world = load("src/server/bootstrap/WorldRuntime.luau", {
+	script = {
+		Parent = { Parent = { services = { BuildingTemplates = templates }, config = { BuildingConfig = catalogue } } },
+	},
+	require = function(module)
+		return module
+	end,
 	workspace = workspace,
 	os = {
 		clock = function()
@@ -99,9 +135,62 @@ assert(model:FindFirstChild("EmbeddedBehavior") and model.Base:FindFirstChild("O
 assert(workspace.Misc.PlayerAnchors and workspace.Misc.PlayerPreviews and workspace.Misc.Effects and frames == 3)
 world.start()
 assert(#replicated.Assets.BuildingPreviews:GetChildren() == 24 and frames == 3)
+assert(#warnings == 2, "Audit reports exactly the missing model and unknown Size: " .. table.concat(warnings, " | "))
+assert(not scenery:FindFirstChild("Hitbox") and sceneryPart.Anchored and sceneryPart.Name == "Tree", "Scenery was modified")
+assert(not replicated.Assets.BuildingPreviews:FindFirstChild("PlotScenary1"), "Scenery got a placement preview")
+assert(warnings[1]:find("Building23") and warnings[1]:find("9x9") and warnings[2]:find("Ghost"))
+siteBase.Size = r.Vector3.new(10, 1, 10)
+catalogue.Ghost, catalogue.Building23 = nil, { Size = "5x5" }
+local problems = templates.audit(models, catalogue, replicated.Assets)
+assert(#problems == 24 and problems[1]:find("5x5 construction site is 10x10"), problems[1])
+siteBase.Size = r.Vector3.new(5, 1, 5)
+table.clear(warnings)
 print(
-	"PASS: ServerStorage models, stripped client preview copies, unchanged authored templates, idempotent Workspace.Misc folders"
+	"PASS: ServerStorage models, stripped client preview copies, retained authored parts, idempotent Workspace.Misc folders"
 )
+
+-- Base + visual parts become a complete template: Hitbox, Assets.Hitbox VFX, IncomeAlert and welds.
+local function near(a, b)
+	return (a - b).Magnitude < 1e-3
+end
+local hitbox = model:FindFirstChild("Hitbox")
+assert(hitbox and hitbox:IsA("Part") and hitbox.Transparency == 1 and not hitbox.CanCollide and not hitbox.CanQuery)
+assert(near(hitbox.Size, r.Vector3.new(5, 9, 5)), "Hitbox must span Base and the building: " .. tostring(hitbox.Size))
+assert(near(hitbox.CFrame.Position, base.CFrame * r.Vector3.new(0, 4, 0)), "Hitbox must be centred on the building")
+assert(hitbox.PlaceVFX.Burst and hitbox.VFX and hitboxAssets.PlaceVFX.Burst.Parent == hitboxAssets.PlaceVFX)
+local alert = model:FindFirstChild("IncomeAlert")
+assert(alert and alert:IsA("BillboardGui") and alert.Adornee == hitbox and not alert.Enabled)
+assert(model.PrimaryPart == base and base.Anchored and not tower.Anchored and not hitbox.Anchored)
+local welded = {}
+for _, joint in base:GetChildren() do
+	if joint:IsA("WeldConstraint") then
+		assert(joint.Part0 == base)
+		welded.tower = welded.tower or joint.Part1 == tower
+		welded.hitbox = welded.hitbox or joint.Part1 == hitbox
+	end
+end
+assert(welded.tower and welded.hitbox, "Every part must ride on Base for completion tweens")
+local placed = models.Building23
+assert(placed.Hitbox and placed.IncomeAlert and placed.Hitbox.VFX, "Every template is prepared")
+assert(preview.Hitbox and preview.Hitbox.Anchored and not preview:FindFirstChild("IncomeAlert"))
+local cloned = model:Clone()
+assert(cloned.IncomeAlert.Adornee == cloned.Hitbox, "Clones must adorn their own Hitbox")
+local weldCount = #base:GetChildren()
+assert(templates.prepare(model, replicated.Assets) and #base:GetChildren() == weldCount and #model:GetChildren() == 5)
+
+-- An existing authored Hitbox/alert is reused; a model without Base/PrimaryPart is refused once.
+local legacy = child(models, "Model", "Legacy")
+local legacyBase = child(legacy, "Part", "Floor")
+legacy.PrimaryPart = legacyBase
+local ownHitbox = child(legacy, "Part", "Hitbox")
+local ownAlert = child(legacy, "BillboardGui", "IncomeAlert")
+assert(templates.prepare(legacy, replicated.Assets))
+assert(legacyBase.Name == "Base" and legacy.Hitbox == ownHitbox and legacy.IncomeAlert == ownAlert and ownHitbox.VFX)
+local broken = child(models, "Model", "Broken")
+child(broken, "Part", "Wall")
+assert(not templates.prepare(broken, replicated.Assets) and not templates.prepare(broken, replicated.Assets))
+assert(#warnings == 1 and warnings[1]:find("Broken"), "Missing Base warns once")
+print("PASS: generated Hitbox bounds, Assets.Hitbox VFX, Assets.IncomeAlert, Base welds, idempotence and legacy reuse")
 
 local added, removing = signal(), signal()
 local root = child(workspace, "Part", "HumanoidRootPart")

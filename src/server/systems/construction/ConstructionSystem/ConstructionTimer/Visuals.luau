@@ -1,4 +1,5 @@
 local Ownership = require(script.Parent.Parent.Parent.Parent.Parent.services.GamePassOwnership)
+local RarityColors = require(game:GetService("ReplicatedStorage").shared.ui.RarityColors)
 -- Visuals: focused implementation for ConstructionTimer.
 return function(Context)
 	local State = Context.State
@@ -14,9 +15,9 @@ return function(Context)
 		local sizeToStudMapping = {
 			["2x2"] = 2,
 			["3x3"] = 3,
-			["4x4"] = 2,
-			["5x5"] = 4,
-			["6x6"] = 4,
+			["4x4"] = 4,
+			["5x5"] = 5,
+			["6x6"] = 6,
 		}
 		return sizeToStudMapping[size] or 4
 	end
@@ -54,13 +55,7 @@ return function(Context)
 		if structurename then
 			-- Use displayName if provided, otherwise use buildingType
 			structurename.Text = displayName or constructionSite:GetAttribute("BuildingType") or constructionSite.Name
-			if rarity == "Common" then
-				structurename.TextColor3 = Color3.new(1, 0.960784, 0.415686)
-			elseif rarity == "Rare" then
-				structurename.TextColor3 = Color3.new(0.270588, 0.745098, 1)
-			elseif rarity == "Legendary" then
-				structurename.TextColor3 = Color3.new(1, 0.760784, 0.207843)
-			end
+			structurename.TextColor3 = RarityColors[rarity] or RarityColors.Common
 		end
 		local percentageLabel = constructionSite:FindFirstChild("Base")
 			and constructionSite.Base:FindFirstChild("ConstructionInfo")

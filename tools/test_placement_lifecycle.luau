@@ -137,6 +137,9 @@ local context = {
 	updateBuildingVisuals = function()
 		state.canPlace = true
 	end,
+	notifyPlacementFailure = function()
+		rejected += 1
+	end,
 	setupControls = function()
 		state.connections.render = {
 			Disconnect = function()
@@ -450,12 +453,13 @@ local spatial = {
 	GRID_SIZE = 1,
 	LOCKED_Y_AXIS = 1.25,
 	tool = { Name = "Bank" },
+	Rules = load("src/shared/util/PlacementRules.luau", { Vector3 = r.Vector3 }),
 }
 load("src/client/controllers/placement/ToolsModule/Session/Geometry.luau", { Vector3 = r.Vector3, CFrame = r.CFrame })(
 	spatial
 )
 spatial.getPlayerPlot = function()
-	return { Land = node({ Owned = land }) }
+	return node({ Land = node({ Owned = land }) })
 end
 assert(spatial.constrainToPlotBounds(r.Vector3.zero) == r.Vector3.zero)
 assert(

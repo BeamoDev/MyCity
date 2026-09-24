@@ -104,8 +104,10 @@ function BuildingSystem.init()
 
 	ReplicatedStorage.Functions.PlaceBlock.OnServerInvoke = function(player, cframe, tool)
 		return Guard.run(player, "Place", function(plr)
-			if not BuildingSystem.isValidPlacement(plr, cframe, tool) then
-				return false
+			-- The reason key (see shared.util.PlacementRules.Messages) explains a rejection to the player.
+			local valid, reason = BuildingSystem.isValidPlacement(plr, cframe, tool)
+			if not valid then
+				return false, reason
 			end
 			return BuildingSystem.placeBuilding(plr, cframe, tool, tool.Name)
 		end)

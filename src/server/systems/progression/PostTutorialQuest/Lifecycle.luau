@@ -25,7 +25,30 @@ return function(Context)
 					PostTutorialQuest.onPopulationChanged(player)
 				end)
 			)
+			-- Cash, rebirth and land quests follow their values as they change.
+			local stats = player:FindFirstChild("leaderstats")
+			for _, name in { "Cash", "Rebirths" } do
+				local value = stats and stats:FindFirstChild(name)
+				if value then
+					table.insert(
+						connections[player],
+						value:GetPropertyChangedSignal("Value"):Connect(function()
+							PostTutorialQuest.refresh(player)
+						end)
+					)
+				end
+			end
 			local plot = Context.getPlot(player)
+			local land = plot and plot:FindFirstChild("Land")
+			local owned = land and land:FindFirstChild("Owned")
+			if owned then
+				table.insert(
+					connections[player],
+					owned.ChildAdded:Connect(function()
+						PostTutorialQuest.refresh(player)
+					end)
+				)
+			end
 			local buildings = plot and plot:FindFirstChild("Buildings")
 			local placed = buildings and buildings:FindFirstChild("Placed")
 			if placed then

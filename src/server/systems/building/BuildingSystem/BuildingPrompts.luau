@@ -3,6 +3,7 @@ local BuildingPrompts = {}
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local RarityColors = require(ReplicatedStorage.shared.ui.RarityColors)
 
 local STEAL_BUILDING_PRODUCT_ID = 3375062345
 local CRIME_INCOME_PENALTY = 0.02
@@ -53,26 +54,25 @@ function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 	local displayName = config.DisplayName or buildingName
 	BuildingInfo.Container.BuildingName.Text = displayName
 
-	if config.Rarity == "Common" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(212, 212, 212) -- Light gray
-	elseif config.Rarity == "Uncommon" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(85, 255, 85) -- Green
-	elseif config.Rarity == "Rare" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(85, 170, 255) -- Blue
-	elseif config.Rarity == "Epic" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(212, 0, 212) -- Purple
-	elseif config.Rarity == "Legendary" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(255, 170, 0) -- Orange
-	elseif config.Rarity == "Mythic" then
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(255, 85, 255) -- Pink/Magenta
-	else
-		-- Default to common if rarity not found
-		BuildingInfo.Container.BuildingName.TextColor3 = Color3.fromRGB(212, 212, 212)
-	end
+	BuildingInfo.Container.BuildingName.TextColor3 = RarityColors[config.Rarity] or RarityColors.Common
 
 	local progressBar = BuildingInfo.Container:FindFirstChild("ProgressBar")
+	local hasLevels = not config.NoLevels
+	if not hasLevels then
+		-- Roads have no level system: remove the level text and XP bar from their billboard.
+		for _, name in { "BuildingLevel", "ProgressBar" } do
+			local item = BuildingInfo.Container:FindFirstChild(name)
+			if item then
+				item:Destroy()
+			end
+		end
+		progressBar = nil
+	end
 
 	local function updateBuildingLevel()
+		if not hasLevels then
+			return
+		end
 		local configFolder = building:FindFirstChild("Config")
 		if configFolder then
 			local BuildingXP = require(script.Parent:WaitForChild("BuildingXP"))
@@ -132,7 +132,7 @@ function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 	updateBuildingLevel()
 
 	local configFolder = building:FindFirstChild("Config")
-	if configFolder then
+	if configFolder and hasLevels then
 		local buildingLevel = configFolder:FindFirstChild("BuildingLevel")
 		local buildingXP = configFolder:FindFirstChild("BuildingXP")
 		local crimePercent = configFolder:FindFirstChild("CrimePercent")

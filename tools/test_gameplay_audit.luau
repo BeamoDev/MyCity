@@ -105,10 +105,11 @@ local player = node({
 	end,
 })
 local placed = node({})
-local plot = node({ Buildings = node({ Placed = placed }) })
+local ownedLand = node({})
+local plot = node({ Buildings = node({ Placed = placed }), Land = node({ Owned = ownedLand }) })
 local questEvents = node({ UpdateQuest = remote(), QuestComplete = remote(), AllQuestsDone = remote() })
 local events = node({ PostTutorialQuest = questEvents })
-local root = { services = { ToolFactory = factory } }
+local root = { services = { ToolFactory = factory }, config = { BuildingConfig = config } }
 local questScript = node({ Parent = { Parent = { Parent = root } } })
 local context
 local modules = {}
@@ -130,6 +131,8 @@ for _, name in { "State", "Progression", "Objectives" } do
 	end
 end
 modules.Lifecycle = function() end
+local questList = load("src/server/systems/progression/PostTutorialQuest/QuestList.luau")
+modules.QuestList = questList
 for k, v in modules do
 	questScript[k] = v
 end
@@ -176,17 +179,23 @@ for i = 1, 5 do
 	placed["road" .. i] = building("StraightRoad", "r" .. i)
 end
 quest.onBuildingPlaced(player, placed.house8)
-assert(questValues.PostTutorialQuestComplete.Value and questValues.QuestProgression.Value == 5)
+-- The original five complete and the chain continues with the new quests.
+assert(questValues.QuestProgression.Value == 5 and not questValues.PostTutorialQuestComplete.Value)
 assert(stats.Cash.Value == 3500 and #tools == 2 and tools[1].Name == "SheriffOffice" and tools[2].Name == "Apartments")
+local update = questEvents.UpdateQuest.calls[#questEvents.UpdateQuest.calls]
+assert(update[2] == questList[6].title and update[6] == #questList, "Quest 6 is shown after the original five")
+-- Players who finished the old five-quest chain continue with the new quests on rejoin.
+questValues.PostTutorialQuestComplete.Value = true
+context.loadState(player)
+assert(not questValues.PostTutorialQuestComplete.Value, "Old completion flag kept new quests hidden")
+questValues.QuestProgression.Value = #questList
 context.loadState(player)
 context.updateUI(player)
+assert(questValues.PostTutorialQuestComplete.Value, "Finished chain not marked complete")
 assert(
 	questEvents.AllQuestsDone.calls[#questEvents.AllQuestsDone.calls][2] == true,
 	"Completed rejoin must hide quest UI"
 )
-questValues.PostTutorialQuestComplete.Value = false
-context.loadState(player)
-assert(questValues.PostTutorialQuestComplete.Value, "Legacy completion flag not repaired")
 -- Reward failure at an already-complete objective is retryable without new progress.
 questValues.QuestProgression.Value, questValues.PostTutorialQuestProgress.Value, questValues.PostTutorialQuestComplete.Value =
 	2, 8, false
@@ -198,10 +207,81 @@ assert(questValues.QuestProgression.Value == 2)
 failTool = false
 assert(context.recalculateProgress(player))
 context.completeQuest(player)
-assert(questValues.PostTutorialQuestComplete.Value)
+-- Retried reward, then roads (5 placed) and population (100) complete immediately; quest 6 waits.
+assert(questValues.QuestProgression.Value == 5)
 print(
-	"PASS: all five quests, exact rewards, duplicate milestones, deferred reward recovery and completed/legacy rejoin"
+	"PASS: original five quests, exact rewards, duplicate milestones, deferred reward recovery, chain continues and completed/legacy rejoin"
 )
+
+-- Every quest in the chain is completable through its real trigger, and every reward is valid.
+for _, entry in questList do
+	if entry.reward.type == "building" then
+		assert(config[entry.reward.building], "Quest reward building missing: " .. entry.reward.building)
+	end
+	assert(entry.required > 0 and entry.title ~= "" and entry.kind, entry.id)
+end
+local seen = {}
+for _, entry in questList do
+	assert(not seen[entry.id], "Duplicate quest id " .. entry.id)
+	seen[entry.id] = true
+end
+local serial = 0
+local function add(folder, name)
+	serial += 1
+	folder["x" .. serial] = building(name, "x" .. serial)
+	return folder["x" .. serial]
+end
+local rarest = { Common = "Shack", Uncommon = "FireStation", Rare = "Hospital", Epic = "Mansion" }
+for step = 6, #questList do
+	local entry = questList[step]
+	local before = questValues.QuestProgression.Value
+	-- A quest whose target was already met completes as soon as it becomes active.
+	if before >= step then
+		continue
+	end
+	assert(before == step - 1, "Chain out of step at " .. entry.id)
+	if entry.kind == "collect" then
+		for _ = 1, entry.required do
+			quest.onIncomeCollected(player)
+		end
+	elseif entry.kind == "construct" then
+		for _ = 1, entry.required do
+			quest.onBuildingPlaced(player, add({}, "Shack"))
+		end
+	elseif entry.kind == "buildings" then
+		while context.measure(player, entry) < entry.required do
+			add(placed, rarest[entry.minRarity or "Common"])
+		end
+		quest.onBuildingPlaced(player, add({}, "StraightRoad"))
+	elseif entry.kind == "roads" then
+		while context.measure(player, entry) < entry.required do
+			add(placed, "StraightRoad")
+		end
+		quest.onBuildingPlaced(player, add({}, "StraightRoad"))
+	elseif entry.kind == "population" then
+		player.Data.PlayerInfo.Population.Value = entry.required
+		quest.onPopulationChanged(player)
+	elseif entry.kind == "cash" then
+		stats.Cash.Value = math.max(stats.Cash.Value, entry.required)
+		quest.refresh(player)
+	elseif entry.kind == "rebirths" then
+		stats.Rebirths.Value = entry.required
+		quest.refresh(player)
+	elseif entry.kind == "land" then
+		while context.countLand(player) < entry.required do
+			serial += 1
+			ownedLand["t" .. serial] = { IsA = function()
+				return true
+			end }
+		end
+		quest.refresh(player)
+	else
+		error("Unknown quest kind " .. tostring(entry.kind))
+	end
+	assert(questValues.QuestProgression.Value >= step, "Quest did not complete: " .. entry.id)
+end
+assert(questValues.PostTutorialQuestComplete.Value and questValues.QuestProgression.Value == #questList)
+print("PASS: all " .. #questList .. " chain quests complete through their real triggers with valid rewards")
 
 local now = 1000000
 local dailyEvents = { ClaimReward = remote(), UpdateUI = remote(), RequestUpdate = remote() }
@@ -366,8 +446,25 @@ print(
 		.. " catalog entries cash deduction/stock/tool and mapped Robux prompt; locks, empty stock, insufficient cash, malformed input, bundle reward names"
 )
 
+-- Mirrors ShopSystem.compensationBuilding with the real price tiers and catalogue.
+local compensationShop = {
+	compensationBuilding = function(productId)
+		local best, bestCost = nil, -1
+		for name, definition in config do
+			if priceMap[shop.getPriceTier(definition.Cost)] == productId and definition.Cost > bestCost then
+				best, bestCost = name, definition.Cost
+			end
+		end
+		return best
+	end,
+}
 local planModule = load("src/server/services/MarketPlaceHandler/GrantPlan.luau", {
-	script = { Parent = { ProductConfig = productConfig } },
+	script = {
+		Parent = {
+			ProductConfig = productConfig,
+			Parent = { Parent = { systems = { economy = { ShopSystem = compensationShop } } } },
+		},
+	},
 	require = function(module)
 		return module
 	end,
@@ -430,9 +527,16 @@ assert(actions.apply(player, { Kind = "Skip", Identifier = "active" }, "skip"))
 assert(skipped == 1)
 assert(actions.apply(player, { Kind = "Refresh" }, "refresh") and refreshed == 1)
 assert(not planModule.create(player, 999, {}))
-assert(not planModule.create(player, 3375058573, {}), "Ambiguous paid target must not guess a building")
+-- A paid receipt with no recorded choice gets the most valuable building at that Robux price.
+local fallback = assert(planModule.create(player, 3375058573, {}), "Paid receipt stayed pending")
+assert(fallback[1].Compensation and priceMap[shop.getPriceTier(config[fallback[1].Name].Cost)] == 3375058573)
+for name, definition in config do
+	if priceMap[shop.getPriceTier(definition.Cost)] == 3375058573 then
+		assert(definition.Cost <= config[fallback[1].Name].Cost, "Compensation was not the best in its tier: " .. name)
+	end
+end
 print(
-	"PASS: all 82 Robux building grant plans/actions, every configured cash/building bundle, finished/active skips, refresh dispatch and unknown/missing-intent rejection"
+	"PASS: all Robux building grant plans/actions, every configured cash/building bundle, finished/active skips, refresh dispatch, unknown-product rejection and equal-value compensation"
 )
 
 -- The latest quest snapshot wins over all earlier delayed completion effects.

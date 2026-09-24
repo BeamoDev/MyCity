@@ -17,11 +17,8 @@ function Ledger.process(player, receipt, makePlan, applyStep)
 			return Data.savePlayerData(player)
 		end
 		if not entry then
-			local intent = record.PurchaseIntents and record.PurchaseIntents[tostring(receipt.ProductId)]
-			if intent and intent.PurchaseId and intent.PurchaseId ~= receipt.PurchaseId then
-				return false
-			end
-			local plan = makePlan(player, receipt.ProductId, record)
+			-- makePlan picks the open intent, then an archived choice, then equal-value compensation.
+			local plan, consume = makePlan(player, receipt.ProductId, record, receipt.PurchaseId)
 			if not plan then
 				record.PendingReceipts = record.PendingReceipts or {}
 				record.PendingReceipts[tostring(receipt.ProductId)] = receipt.PurchaseId
@@ -30,9 +27,9 @@ function Ledger.process(player, receipt, makePlan, applyStep)
 			end
 			entry = { ProductId = receipt.ProductId, Plan = plan, Applied = {} }
 			record.Receipts[receipt.PurchaseId] = entry
-			local intent = record.PurchaseIntents and record.PurchaseIntents[tostring(receipt.ProductId)]
-			if intent then
-				intent.PurchaseId = receipt.PurchaseId
+			-- Bind the source in the same snapshot as the entry, so no other receipt can reuse it.
+			if consume then
+				consume()
 			end
 			if not Data.savePlayerData(player) then
 				return false

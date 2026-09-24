@@ -56,6 +56,7 @@ local api = node({
 })
 api.Parent =
 	{ Parent = node({ economy = node({ IncomeSystem = { calculateAndStackBuildingIncome = function() end } }) }) }
+api.Parent.Parent.Parent = { config = { BuildingConfig = { Bank = { DisplayName = "Bank" } } } }
 local event = { FireClient = function() end }
 local rep = { Events = { Notifications = node({ BuildingCollected = event }), UI = { CloseBuildingInfo = event } } }
 local config = luau.load(fs.readFile("src/server/systems/building/BuildingSystem/BuildingConfig.luau"), {

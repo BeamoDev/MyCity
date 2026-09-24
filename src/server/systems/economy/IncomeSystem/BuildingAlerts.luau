@@ -40,16 +40,12 @@ return function(Context)
 						-- Accrued income already includes the crime penalty.
 						textLabel.Text = Context.formatNumberShort(displayIncome)
 
-						-- Change color based on crime level
-						if crimePercent and crimePercent.Value > 50 then
-							--textLabel.TextColor3 = Color3.fromRGB(255, 100, 100) -- Red for high crime
-							textLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for low crime
-						elseif crimePercent and crimePercent.Value > 30 then
-							--textLabel.TextColor3 = Color3.fromRGB(255, 255, 100) -- Yellow for medium crime
-							textLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for low crime
-						else
-							textLabel.TextColor3 = Color3.fromRGB(100, 255, 100) -- Green for low crime
-						end
+						-- Crime reduces income; the colour tells the player why a building earns less.
+						local crime = crimePercent and crimePercent.Value or 0
+						textLabel.TextColor3 = if crime > 50
+							then Color3.fromRGB(255, 100, 100)
+							elseif crime > 30 then Color3.fromRGB(255, 220, 90)
+							else Color3.fromRGB(100, 255, 100)
 
 						alertGui.Enabled = true
 

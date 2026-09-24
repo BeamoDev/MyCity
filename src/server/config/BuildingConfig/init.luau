@@ -36,4 +36,10 @@ do
 		catalogue[name].Industry = "Residential"
 	end
 end
+-- Roads are infrastructure: no XP, levels or level display.
+for name, definition in catalogue do
+	if name:match("^Road") then
+		definition.NoLevels = true
+	end
+end
 return catalogue

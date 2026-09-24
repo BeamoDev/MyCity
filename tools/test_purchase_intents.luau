@@ -62,13 +62,22 @@ saveOk, promptThrows = true, true
 assert(not intents.prompt(player, 1, { Name = "A" }) and not record.PurchaseIntents["1"])
 promptThrows = false
 assert(intents.prompt(player, 1, { Name = "A" }))
-assert(not intents.prompt(player, 1, { Name = "B" }) and record.PurchaseIntents["1"].Details.Name == "A")
+-- A lost cancellation must never block the next purchase: the old choice is archived instead.
+assert(intents.prompt(player, 1, { Name = "B" }) and record.PurchaseIntents["1"].Details.Name == "B")
+assert(record.IntentArchive["1"][1].Details.Name == "A", "Replaced choice was not archived")
 finished(7, 1, false)
-assert(not record.PurchaseIntents["1"])
+assert(not record.PurchaseIntents["1"] and #record.IntentArchive["1"] == 1)
 assert(intents.prompt(player, 1, { Name = "B" }))
 record.PurchaseIntents["1"].PurchaseId = "paid"
 finished(7, 1, false)
 assert(record.PurchaseIntents["1"].PurchaseId == "paid")
+-- A bound intent's plan lives in its receipt entry, so a new prompt replaces it without archiving.
+assert(intents.prompt(player, 1, { Name = "C" }) and record.PurchaseIntents["1"].Details.Name == "C")
+assert(#record.IntentArchive["1"] == 1)
+for index = 1, 25 do
+	intents.prompt(player, 1, { Name = "N" .. index })
+end
+assert(#record.IntentArchive["1"] == 20, "Archive is bounded")
 print(
-	"PASS: intent save failure, prompt failure retry, target replacement refusal, cancellation, bound paid intent preserved"
+	"PASS: intent save failure, prompt failure retry, replacement archives instead of blocking, cancellation, bound paid intent preserved, bounded archive"
 )

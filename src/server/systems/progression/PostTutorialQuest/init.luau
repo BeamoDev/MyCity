@@ -14,39 +14,8 @@ local evAllDone = questFolder:WaitForChild("AllQuestsDone")
 local playerStates = {}
 local placedBuildingIds = {}
 
--- Quest definitions with rewards
-local QUESTS = {
-	{
-		id = "collect_income",
-		title = "Collect Income",
-		required = 1,
-		reward = { type = "cash", amount = 500 },
-	},
-	{
-		id = "construct_buildings",
-		title = "Construct 3 buildings",
-		required = 3,
-		reward = { type = "cash", amount = 1000 },
-	},
-	{
-		id = "buildings_total",
-		title = "Have 8 buildings placed",
-		required = 8,
-		reward = { type = "building", building = "SheriffOffice" },
-	},
-	{
-		id = "place_roads",
-		title = "Place 5 road pieces",
-		required = 5,
-		reward = { type = "cash", amount = 2000 },
-	},
-	{
-		id = "population",
-		title = "Reach 100 population",
-		required = 100,
-		reward = { type = "building", building = "Apartments" },
-	},
-}
+-- Quest definitions with rewards (append-only; see QuestList).
+local QUESTS = require(script:WaitForChild("QuestList"))
 
 -- Helper functions
 

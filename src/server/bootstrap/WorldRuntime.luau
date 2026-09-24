@@ -42,11 +42,16 @@ function World.start(isClosing)
 	local models = assert(storage:FindFirstChild("Buildings"), "Missing ServerStorage.Buildings")
 	local assets = folder(game:GetService("ReplicatedStorage"), "Assets")
 	local previews = folder(assets, "BuildingPreviews")
+	local BuildingTemplates = require(script.Parent.Parent.services.BuildingTemplates)
+	local catalogue = require(script.Parent.Parent.config.BuildingConfig)
 	for _, model in models:GetChildren() do
-		if model:IsA("Model") then
+		-- Only catalogued buildings; other models kept in this folder (e.g. plot scenery) stay untouched.
+		if model:IsA("Model") and catalogue[model.Name] then
 			if not checkpoint(true) then
 				return false
 			end
+			-- Complete the authoritative template first; every placement/restore/preview clones it.
+			BuildingTemplates.prepare(model, assets)
 			local copy = assert(model:Clone(), "Building must be Archivable: " .. model.Name)
 			for index, child in copy:GetDescendants() do
 				if index % 64 == 0 then
@@ -79,6 +84,7 @@ function World.start(isClosing)
 			copy.Parent = previews
 		end
 	end
+	BuildingTemplates.audit(models, catalogue, assets)
 	started = true
 end
 return World

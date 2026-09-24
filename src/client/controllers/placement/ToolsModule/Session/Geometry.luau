@@ -186,29 +186,7 @@ return function(Context)
 		end
 
 		local cf = CFrame.new(position) * CFrame.Angles(0, math.rad(state.rotationAngle), 0)
-		local tiles = Owned:GetChildren()
-		local nx, nz = math.max(1, math.ceil(base.Size.X)), math.max(1, math.ceil(base.Size.Z))
-		for x = 0, nx do
-			for z = 0, nz do
-				local point = cf:PointToWorldSpace(
-					Vector3.new(-base.Size.X / 2 + base.Size.X * x / nx, 0, -base.Size.Z / 2 + base.Size.Z * z / nz)
-				)
-				local found = false
-				for _, tile in tiles do
-					if tile:IsA("BasePart") then
-						local p = tile.CFrame:PointToObjectSpace(point)
-						if math.abs(p.X) <= tile.Size.X / 2 + 0.01 and math.abs(p.Z) <= tile.Size.Z / 2 + 0.01 then
-							found = true
-							break
-						end
-					end
-				end
-				if not found then
-					return false
-				end
-			end
-		end
-		return true
+		return Context.Rules.onOwnedLand(Context.Rules.ownedTiles(plot), cf, base.Size)
 	end
 
 	-- Find nearest valid position if spawn in front fails

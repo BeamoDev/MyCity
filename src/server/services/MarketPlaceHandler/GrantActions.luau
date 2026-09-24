@@ -4,6 +4,7 @@ local Construction = require(script.Parent.Parent.Parent.systems.construction.Co
 local Shop = require(script.Parent.Parent.Parent.systems.economy.ShopSystem)
 local Transfers = require(script.Parent.TransferService)
 local Actions = {}
+local STEAL_GRACE_SECONDS = 600
 
 function Actions.apply(player, step, transactionId)
 	if step.Kind == "Cash" then
@@ -39,8 +40,10 @@ function Actions.apply(player, step, transactionId)
 			return false
 		end
 		local descriptor, outcome = Transfers.take(step, transactionId)
-		if not descriptor and outcome == "missing" and type(step.Snapshot) == "table" then
-			-- Only confirmed absence permits compensation; service/lease errors keep retrying.
+		-- A confirmed-missing target, or one blocked (owner busy/in another server) past the grace
+		-- period, delivers the saved snapshot so a paid steal never stays pending indefinitely.
+		local overdue = os.time() - (step.Created or 0) >= STEAL_GRACE_SECONDS
+		if not descriptor and (outcome == "missing" or overdue) and type(step.Snapshot) == "table" then
 			descriptor = table.clone(step.Snapshot)
 		end
 		if not descriptor or not require(script.Parent.Parent.Parent.systems.security.RequestGuard).ready(player) then

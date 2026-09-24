@@ -172,7 +172,10 @@ function BuildingConfig.collectBuilding(player, building)
 		building:Destroy()
 	end
 
-	local notificationText = string.format("Picked up Level %d %s!", level, buildingType)
+	local definition = require(script.Parent.Parent.Parent.Parent.config.BuildingConfig)[buildingType]
+	local notificationText = if definition and definition.NoLevels
+		then string.format("Picked up %s!", definition.DisplayName or buildingType)
+		else string.format("Picked up Level %d %s!", level, buildingType)
 
 	local collectEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("BuildingCollected")
 	if collectEvent then

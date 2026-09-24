@@ -69,11 +69,17 @@ print(
 	"PASS: receipt replay, partial save failure, same-server retry, crash/rejoin continuation, unloaded profile rejection"
 )
 
--- Two receipt IDs cannot consume the same bound purchase target.
+-- The plan's source (open intent or archived choice) is bound in the same save as the new entry.
 loaded = true
-record = { PurchaseIntents = { ["42"] = { PurchaseId = "old-receipt", Details = {} } } }
-local beforeGrants = grants
-assert(not ledger.process({}, receipt, plan, apply) and grants == beforeGrants)
+record = {}
+local consumed = 0
+assert(ledger.process({ PurchaseId = "bind", ProductId = 42 }, { PurchaseId = "bind", ProductId = 42 }, function(_, _, _, id)
+	assert(id == "bind", "Ledger did not pass the receipt id to the plan")
+	return {}, function()
+		consumed += 1
+	end
+end, apply))
+assert(consumed == 1 and record.Receipts.bind.Complete)
 -- Completing an older receipt preserves a newer intent at the same price.
 record = {
 	Receipts = { [receipt.PurchaseId] = { ProductId = 42, Plan = {}, Applied = {} } },

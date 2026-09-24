@@ -45,6 +45,21 @@ return {
 		BuildLimit = 20,
 	},
 
+	BookStore = {
+		DisplayName = "Book Store",
+		Description = "Stories for every citizen",
+		Size = "2x2",
+		BuildTime = 75,
+		Cost = 16000,
+		Income = 55,
+		Population = 12,
+		-- ImageId: add the shop/inventory icon asset id here.
+		Rarity = "Uncommon",
+		RebirthRequired = 0,
+		PopulationRequired = 700,
+		BuildLimit = 15,
+	},
+
 	FastFood = {
 		DisplayName = "Fast Food",
 		Description = "Burgers and fries",

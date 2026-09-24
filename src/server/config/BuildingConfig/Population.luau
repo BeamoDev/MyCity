@@ -60,6 +60,21 @@ return {
 		BuildLimit = 10,
 	},
 
+	CoffeeShop = {
+		DisplayName = "Coffee Shop",
+		Description = "Fresh brews on the corner",
+		Size = "2x2",
+		BuildTime = 45,
+		Cost = 3000,
+		Income = 20,
+		Population = 6,
+		-- ImageId: add the shop/inventory icon asset id here.
+		Rarity = "Common",
+		RebirthRequired = 0,
+		PopulationRequired = 175,
+		BuildLimit = 10,
+	},
+
 	FireShed = {
 		DisplayName = "Fire Shed",
 		Description = "Emergency response ready",

@@ -68,6 +68,7 @@ function Bootstrap.start()
 			script.Parent.Parent:WaitForChild("systems"):WaitForChild("world"):WaitForChild("HighwayTrafficSystem")
 		),
 		CivilianSystem = require(script.Parent.Parent.systems.world.CivilianSystem),
+		RoadTraffic = require(script.Parent.Parent.systems.world.RoadTraffic),
 		DailyRewards = require(
 			script.Parent.Parent:WaitForChild("systems"):WaitForChild("progression"):WaitForChild("DailyRewards")
 		),
@@ -99,6 +100,7 @@ function Bootstrap.start()
 			"HighwayTrafficSystem",
 			"CivilianSystem",
 			"TrainSystem",
+			"RoadTraffic",
 			"PostTutorialQuest",
 			"DailyRewards",
 			"DailyQuests",

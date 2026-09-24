@@ -75,6 +75,21 @@ return {
 		BuildLimit = 3,
 	},
 
+	ElectricTower = {
+		DisplayName = "Electric Tower",
+		Description = "Powering the whole skyline",
+		Size = "3x3",
+		BuildTime = 700,
+		Cost = 520000,
+		Income = 620,
+		Population = 60,
+		-- ImageId: add the shop/inventory icon asset id here.
+		Rarity = "Epic",
+		RebirthRequired = 0,
+		PopulationRequired = 38000,
+		BuildLimit = 3,
+	},
+
 	PowerStation = {
 		DisplayName = "Power Station",
 		Description = "City-wide energy source",

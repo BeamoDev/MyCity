@@ -184,3 +184,22 @@ assert(cashChanged.Count() == 0 and frames.Count() == 0 and context.State.cashFe
 print(
 	"PASS: cash initial balance, gain/spend, retargeting, popup bounds, idle frames, hidden/destroyed HUD and replacement cleanup"
 )
+
+-- Counting down to $0 must never display "-$0" (math.ceil of a small negative is -0).
+do
+	local fsModule, luauModule = require("@lune/fs"), require("@lune/luau")
+	local counter = luauModule.load(fsModule.readFile("src/shared/util/NumberCounter.luau"))()
+	local displays = {}
+	luauModule.load(fsModule.readFile("src/client/controllers/ui/UIController/Displays.luau"))()(displays)
+	local state = {}
+	counter.SetTarget(state, 5, { Minimum = 0 }, 0)
+	counter.SetTarget(state, 0, { Minimum = 0 }, 0)
+	for t = 0, 1, 0.01 do
+		local _, value = counter.Step(state, t)
+		if value then
+			assert(not displays.formatNumber(value):find("-"), "Cash showed a negative zero")
+		end
+	end
+	assert(displays.formatNumber(-0) == "$0" and displays.formatNumber(-1500) == "-$1,500")
+	print("PASS: cash counting down to $0 never shows -$0")
+end

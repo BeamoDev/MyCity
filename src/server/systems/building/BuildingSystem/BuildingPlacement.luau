@@ -9,8 +9,9 @@ local ownsGamePass = nil
 local generateUniqueID = nil
 
 function BuildingPlacement.isValidPlacement(player, previewCFrame, tool)
-	if not Validation.placement(player, previewCFrame, tool) then
-		return false
+	local valid, reason = Validation.placement(player, previewCFrame, tool)
+	if not valid then
+		return false, reason
 	end
 	local plotData = player:FindFirstChild("Data")
 		and player.Data:FindFirstChild("PlotInfo")
@@ -41,7 +42,7 @@ function BuildingPlacement.isValidPlacement(player, previewCFrame, tool)
 		if currentBuilders >= maxBuilders then
 			game.ReplicatedStorage.Events.UI.UpdateBuilderUI:FireClient(player, currentBuilders, maxBuilders)
 			game.ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player)
-			return false
+			return false, "BuilderLimit"
 		end
 	end
 
@@ -49,8 +50,9 @@ function BuildingPlacement.isValidPlacement(player, previewCFrame, tool)
 end
 
 function BuildingPlacement.placeBuilding(player, cframe, tool, buildingName)
-	if not Validation.placement(player, cframe, tool) or buildingName ~= tool.Name then
-		return false
+	local valid, reason = Validation.placement(player, cframe, tool)
+	if not valid or buildingName ~= tool.Name then
+		return false, reason
 	end
 
 	local BuildingConfig =
@@ -126,7 +128,7 @@ function BuildingPlacement.placeBuilding(player, cframe, tool, buildingName)
 
 	if not isInTutorial and not isTutorialBank and currentBuilders >= maxBuilders then
 		ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player)
-		return false
+		return false, "BuilderLimit"
 	end
 
 	-- Fix: Pass the Robux flag to construction system

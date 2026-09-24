@@ -25,4 +25,45 @@ function Model.create(template, parent, startFrame)
 	clone.Parent = parent
 	return clone, pivotOffset
 end
+-- Every vehicle model in a template folder (sub-folders included; a model nested inside another
+-- model is part of that vehicle). The server stamps each with a unique TemplateId attribute so
+-- clients clone exactly the chosen model even when several share a Name.
+function Model.templates(folder, onlyName)
+	local found = {}
+	for _, item in folder:GetDescendants() do
+		if item:IsA("Model") and (not onlyName or item.Name == onlyName) then
+			local nested = false
+			local parent = item.Parent
+			while parent and parent ~= folder do
+				if parent:IsA("Model") then
+					nested = true
+					break
+				end
+				parent = parent.Parent
+			end
+			if not nested and item:FindFirstChildWhichIsA("BasePart", true) then
+				table.insert(found, item)
+			end
+		end
+	end
+	for index, template in found do
+		if template:GetAttribute("TemplateId") == nil then
+			template:SetAttribute("TemplateId", folder.Name .. "#" .. index .. "#" .. template.Name)
+		end
+	end
+	return found
+end
+
+-- Client lookup: by TemplateId when the trip has one, else by name (older trips).
+function Model.find(folder, id, name)
+	if id then
+		for _, item in folder:GetDescendants() do
+			if item:IsA("Model") and item:GetAttribute("TemplateId") == id then
+				return item
+			end
+		end
+	end
+	return if name then folder:FindFirstChild(name, true) else nil
+end
+
 return Model

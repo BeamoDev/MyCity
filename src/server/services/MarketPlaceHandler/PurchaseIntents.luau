@@ -2,6 +2,24 @@ local Marketplace = game:GetService("MarketplaceService")
 local Data = require(script.Parent.Parent.Parent.persistence.PlayerDataModule)
 local Guard = require(script.Parent.Parent.Parent.systems.security.RequestGuard)
 local Intents = {}
+local ARCHIVE_LIMIT = 20
+local ARCHIVE_DAYS = 30
+
+function Intents.archive(record, key, intent)
+	record.IntentArchive = record.IntentArchive or {}
+	local list = record.IntentArchive[key] or {}
+	record.IntentArchive[key] = list
+	table.insert(list, { Details = intent.Details, Created = intent.Created or os.time() })
+	local cutoff = os.time() - ARCHIVE_DAYS * 86400
+	for index = #list, 1, -1 do
+		if (list[index].Created or 0) < cutoff then
+			table.remove(list, index)
+		end
+	end
+	while #list > ARCHIVE_LIMIT do
+		table.remove(list, 1)
+	end
+end
 
 function Intents.prompt(player, productId, details)
 	if not Guard.ready(player) or not Data.isLoaded(player) then
@@ -23,10 +41,14 @@ function Intents.prompt(player, productId, details)
 	local record = Data.getRecord(player)
 	record.PurchaseIntents = record.PurchaseIntents or {}
 	local key = tostring(productId)
-	-- A pending paid target cannot be replaced by another prompt of the same price.
-	if record.PurchaseIntents[key] or (record.PendingReceipts and record.PendingReceipts[key]) then
-		return false,
-			"A previous purchase at this price needs recovery. Please do not buy it again. If it stays pending, contact the developer with your Roblox purchase history."
+	-- Never block a new purchase. A bound intent's plan already lives in its receipt entry; an
+	-- unbound one is archived so a late receipt for it still grants the target the player chose.
+	local previous = record.PurchaseIntents[key]
+	if previous then
+		if not previous.PurchaseId then
+			Intents.archive(record, key, previous)
+		end
+		record.PurchaseIntents[key] = nil
 	end
 	record.PurchaseIntents[key] = { Details = details, Created = os.time() }
 	if not Data.savePlayerData(player) or not Guard.ready(player) then

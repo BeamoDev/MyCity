@@ -83,13 +83,16 @@ return function(Context)
 						and (
 							(name == "CashIcon" and reward.type == "cash")
 							or (name == "ApartmentsIcon" and reward.building == "Apartments")
-							or (name == "MansionIcon" and reward.building == "SheriffOffice")
+							-- Any other building reward uses the general building icon.
+							or (name == "MansionIcon" and reward.type == "building" and reward.building ~= "Apartments")
 						)
 				end
 			end
 			local info = section:FindFirstChild("Reward")
 			if info and reward then
-				info.Text = if reward.type == "cash" then "$" .. tostring(reward.amount) else reward.building
+				info.Text = if reward.type == "cash"
+					then (if Context.formatNumber then Context.formatNumber(reward.amount) else "$" .. tostring(reward.amount))
+					else (reward.label or reward.building)
 			end
 		end
 		if not first and not positionTween then

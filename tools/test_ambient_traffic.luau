@@ -94,7 +94,14 @@ local modelModule = load("src/shared/visuals/AmbientModel.luau", env)
 local routes = load(path .. "Routes.luau", env)
 env.script = { Model = modelModule, Routes = routes }
 local traffic = load(path .. "init.luau", env)
-env.script = { Parent = { AmbientTraffic = traffic } }
+local diverts = 0
+-- City visits are covered by test_road_traffic; here highway cars always stay on the highway.
+local roadTraffic = { divert = function(current, trips)
+	assert(current and #trips == 2 and current.first and current.last, "Divert got the car's trips")
+	diverts += 1
+	return nil
+end }
+env.script = { Parent = { AmbientTraffic = traffic, RoadTraffic = roadTraffic } }
 local train = load("src/server/systems/world/TrainSystem.luau", env)
 local cars = load("src/server/systems/world/HighwayTrafficSystem.luau", env)
 train.init()
@@ -164,6 +171,7 @@ tick(0)
 assert(#list("Trains") == 1 and subscriptions == 1)
 train.stop()
 assert(subscriptions == 0)
+assert(diverts > 0, "Highway spawns never offered a city visit")
 print(
 	"PASS: server sends immutable trips only; client rigid motion, late join, expiry, sanitizing, route caps, delayed frames and restart cleanup"
 )

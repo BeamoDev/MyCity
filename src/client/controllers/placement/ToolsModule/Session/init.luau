@@ -63,6 +63,8 @@ return function(toolArg, initializedToolsArg, cooldownArg)
 		checkPlacementAccess = function(plot)
 			return Access.check(player, plot, tool)
 		end,
+		notifyPlacementFailure = Access.notifyFailure,
+		Rules = require(ReplicatedStorage.shared.util.PlacementRules),
 		State = State,
 		Session = Session,
 		ReplicatedStorage = ReplicatedStorage,

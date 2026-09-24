@@ -46,7 +46,16 @@ function Controller.start()
 			end
 			local first, last = trip:GetAttribute("First"), trip:GetAttribute("Last")
 			local duration, time = trip:GetAttribute("Duration"), trip:GetAttribute("Started")
-			local target, finished = Trip.position(first, last, duration, time, now)
+			if entry.path == nil then
+				-- Road cars follow waypoints; highway/train trips are a single straight line.
+				entry.path = Trip.readPath(trip) or false
+			end
+			local target, finished
+			if entry.path then
+				target, finished = Trip.along(entry.path, duration, time, now)
+			else
+				target, finished = Trip.position(first, last, duration, time, now)
+			end
 			if not target then
 				continue
 			end
@@ -61,7 +70,8 @@ function Controller.start()
 				entry.retryAt = now + 1
 				local assets = ReplicatedStorage:FindFirstChild("Assets")
 				local templates = assets and assets:FindFirstChild(trip:GetAttribute("TemplateFolder") or "")
-				local template = templates and templates:FindFirstChild(trip:GetAttribute("TemplateName") or "")
+				local template = templates
+					and Model.find(templates, trip:GetAttribute("TemplateId"), trip:GetAttribute("TemplateName"))
 				if template then
 					local ok, model, pivot = pcall(Model.create, template, folder, target)
 					if ok then

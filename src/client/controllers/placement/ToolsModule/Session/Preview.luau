@@ -25,9 +25,12 @@ return function(Context)
 		end
 		state.nextVisualCheck = now + (if unchanged then 0.1 else 1 / 30)
 		state.visualPosition, state.visualAngle = position, state.rotationAngle
-		local isValid = not Context.checkCollisionAtPosition(position)
-			and Context.isFullyWithinPlotBounds(position)
-			and not Context.isPlacementOnCooldown()
+		-- Same rules as the server (shared.util.PlacementRules); the reason is shown if placing fails.
+		state.placementReason = if not Context.isFullyWithinPlotBounds(position)
+			then "OutsideLand"
+			elseif Context.checkCollisionAtPosition(position) then "Overlap"
+			else nil
+		local isValid = state.placementReason == nil and not Context.isPlacementOnCooldown()
 		state.canPlace = isValid
 
 		-- Update the actual Hitbox part color

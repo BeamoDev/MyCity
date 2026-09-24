@@ -25,14 +25,44 @@ local function spawn(state)
 	local offset = math.random(-state.config.LaneOffset * 10, state.config.LaneOffset * 10) / 10
 	local first, last, duration = Routes.trip(route, offset, state.config.Duration, state.config.Speed)
 	local template = state.templates[math.random(1, #state.templates)]
+	-- Optional detour (highway cars visiting cities): a waypoint path replacing the straight trip.
+	local path = nil
+	if state.config.Divert then
+		local trips, current = {}, nil
+		for _, candidate in state.routes do
+			local a, b = Routes.trip(candidate, offset, state.config.Duration, state.config.Speed)
+			local trip = { route = candidate, first = a, last = b }
+			table.insert(trips, trip)
+			if candidate == route then
+				current = trip
+			end
+		end
+		path = state.config.Divert(current, trips, template)
+		if path and #path >= 2 then
+			local length = 0
+			for index = 2, #path do
+				length += (path[index].Position - path[index - 1].Position).Magnitude
+			end
+			duration = length / state.config.Speed
+		else
+			path = nil
+		end
+	end
 	local model = Instance.new("Folder")
 	state.serial += 1
 	model.Name = state.config.System .. "_" .. state.serial
 	model:SetAttribute("TemplateFolder", state.config.Templates)
 	model:SetAttribute("TemplateName", template.Name)
+	model:SetAttribute("TemplateId", template:GetAttribute("TemplateId"))
 	model:SetAttribute("First", first)
 	model:SetAttribute("Last", last)
 	model:SetAttribute("Duration", duration)
+	if path then
+		model:SetAttribute("Points", #path)
+		for index, frame in path do
+			model:SetAttribute("P" .. index, frame)
+		end
+	end
 	model:SetAttribute("Started", Workspace:GetServerTimeNow())
 	model.Parent = state.folder
 	table.insert(state.active, {
@@ -80,12 +110,7 @@ function Traffic.new(config)
 			return
 		end
 		local routes = Routes.read(system:FindFirstChild("Points"), config.Routes)
-		local templates = {}
-		for _, template in source:GetChildren() do
-			if template:IsA("Model") and (not config.Template or template.Name == config.Template) then
-				table.insert(templates, template)
-			end
-		end
+		local templates = require(script.Model).templates(source, config.Template)
 		if #routes == 0 or #templates == 0 then
 			warn("[AmbientTraffic] No valid routes/templates for", config.System)
 			return

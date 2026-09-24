@@ -79,6 +79,9 @@ function NumberCounter.Step(state, now)
 	if alpha >= 1 then
 		roundedValue = target
 	end
+	if roundedValue == 0 then
+		roundedValue = 0 -- math.ceil of a small negative is -0, which would display as "-0"
+	end
 
 	local changed = roundedValue ~= state.Current
 	state.Current = roundedValue

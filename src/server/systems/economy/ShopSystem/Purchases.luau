@@ -140,6 +140,19 @@ return function(Context)
 		end
 	end
 
+	-- Most valuable building sold for this Robux price product; used when a paid receipt's choice is unknown.
+	function ShopSystem.compensationBuilding(productId)
+		local catalogue = require(script.Parent.Parent.Parent.Parent:WaitForChild("config"):WaitForChild("BuildingConfig"))
+		local bestName, bestCost = nil, -1
+		for name, definition in catalogue do
+			local cost = definition.Cost
+			if type(cost) == "number" and PRICE_TIERS[Context.getPriceTier(cost)] == productId and cost > bestCost then
+				bestName, bestCost = name, cost
+			end
+		end
+		return bestName
+	end
+
 	ShopSystem.purchase = Context.handlePurchase
 	ShopSystem.syncPlayer = Context.sendShopUpdate
 end

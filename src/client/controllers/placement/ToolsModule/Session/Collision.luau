@@ -3,7 +3,6 @@ return function(Context)
 	local State = Context.State
 	local Workspace = Context.Workspace
 	local LOCKED_Y_AXIS = Context.LOCKED_Y_AXIS
-	local COLLISION_CHECK_MARGIN = Context.COLLISION_CHECK_MARGIN
 	local SPAWN_DISTANCE = Context.SPAWN_DISTANCE
 	local player = Context.player
 	local state = Context.state
@@ -24,36 +23,8 @@ return function(Context)
 			return false
 		end
 
-		local overlapParams = OverlapParams.new()
-		overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-		overlapParams.FilterDescendantsInstances = { state.previewBuilding, Context.player.Character }
-
-		local partsInRegion = Workspace:GetPartBoundsInBox(
-			buildingBase.CFrame,
-			buildingBase.Size - Vector3.new(COLLISION_CHECK_MARGIN * 2, 0, COLLISION_CHECK_MARGIN * 2),
-			overlapParams
-		)
-
-		for _, part in ipairs(partsInRegion) do
-			if part:IsDescendantOf(state.previewBuilding) then
-				continue
-			end
-
-			if part.Name == "Base" or part.Name == "Hitbox" then
-				local parentModel = part.Parent
-				if parentModel and parentModel.Parent then
-					local parentFolder = parentModel.Parent
-					if parentFolder.Name == "Placed" or parentFolder.Name == "Construction" then
-						return true
-					end
-				end
-			end
-
-			if part.Parent and part.Parent.Name == "Locked" then
-				return true
-			end
-		end
-		return false
+		-- Only other buildings' Base footprints block; land coverage is checked separately.
+		return Context.Rules.blockingBuilding(plot, buildingBase.CFrame, buildingBase.Size) ~= nil
 	end
 
 	-- Validation
@@ -154,38 +125,8 @@ return function(Context)
 			return false
 		end
 
-		local overlapParams = OverlapParams.new()
-		overlapParams.FilterType = Enum.RaycastFilterType.Exclude
-		overlapParams.FilterDescendantsInstances = { state.previewBuilding, Context.player.Character }
-
 		local testCFrame = CFrame.new(position) * CFrame.Angles(0, math.rad(state.rotationAngle), 0)
-
-		local partsInRegion = Workspace:GetPartBoundsInBox(
-			testCFrame,
-			buildingBase.Size - Vector3.new(COLLISION_CHECK_MARGIN * 2, 0, COLLISION_CHECK_MARGIN * 2),
-			overlapParams
-		)
-
-		for _, part in ipairs(partsInRegion) do
-			if part:IsDescendantOf(state.previewBuilding) then
-				continue
-			end
-
-			if part.Name == "Base" or part.Name == "Hitbox" then
-				local parentModel = part.Parent
-				if parentModel and parentModel.Parent then
-					local parentFolder = parentModel.Parent
-					if parentFolder.Name == "Placed" or parentFolder.Name == "Construction" then
-						return true
-					end
-				end
-			end
-
-			if part.Parent and part.Parent.Name == "Locked" then
-				return true
-			end
-		end
-		return false
+		return Context.Rules.blockingBuilding(plot, testCFrame, buildingBase.Size) ~= nil
 	end
 
 	-- Visual updates

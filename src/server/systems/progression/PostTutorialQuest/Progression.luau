@@ -18,7 +18,18 @@ return function(Context)
 			return
 		end
 		local quest = QUESTS[state.step]
-		evUpdate:FireClient(player, quest.title, state.progress, quest.required, state.step, #QUESTS, quest.reward)
+		evUpdate:FireClient(player, quest.title, state.progress, quest.required, state.step, #QUESTS, Context.rewardView(quest.reward))
+	end
+
+	-- Reward as shown to the player: building rewards carry their display name.
+	function Context.rewardView(reward)
+		if reward.type ~= "building" then
+			return reward
+		end
+		local definition = require(script.Parent.Parent.Parent.Parent.config.BuildingConfig)[reward.building]
+		local view = table.clone(reward)
+		view.label = definition and definition.DisplayName or reward.building
+		return view
 	end
 
 	-- Reward giving
@@ -57,16 +68,10 @@ return function(Context)
 		local quest = QUESTS[state.step]
 		local oldProgress = state.progress
 
-		-- Recalculate based on quest type
-		if quest.id == "construct_buildings" then
-			-- Don't recalculate constructions - they're tracked as events
-			-- Keep the existing progress
-		elseif quest.id == "buildings_total" then
-			state.progress = math.min(quest.required, Context.countPlaced(player, { onlyRoads = false }))
-		elseif quest.id == "place_roads" then
-			state.progress = math.min(quest.required, Context.countPlaced(player, { onlyRoads = true }))
-		elseif quest.id == "population" then
-			state.progress = math.min(quest.required, Context.getPopulation(player))
+		-- Measured quests follow the current world state; counted quests keep their event tally.
+		local value = Context.measure(player, quest)
+		if value then
+			state.progress = math.min(quest.required, value)
 		end
 
 		if state.progress ~= oldProgress then
@@ -107,7 +112,7 @@ return function(Context)
 		state.completing = false
 		state.progress = 0
 		Context.saveState(player)
-		evComplete:FireClient(player, quest.title, quest.reward)
+		evComplete:FireClient(player, quest.title, Context.rewardView(quest.reward))
 
 		if state.step > #QUESTS then
 			state.completed = true
@@ -118,14 +123,7 @@ return function(Context)
 
 		-- seed the next quest's starting progress from world state
 		local newQuest = QUESTS[state.step]
-		local newProgress = 0
-		if newQuest.id == "buildings_total" then
-			newProgress = math.min(newQuest.required, Context.countPlaced(player, { onlyRoads = false }))
-		elseif newQuest.id == "place_roads" then
-			newProgress = math.min(newQuest.required, Context.countPlaced(player, { onlyRoads = true }))
-		elseif newQuest.id == "population" then
-			newProgress = math.min(newQuest.required, Context.getPopulation(player))
-		end
+		local newProgress = math.min(newQuest.required, Context.measure(player, newQuest) or 0)
 
 		state.progress = newProgress
 		Context.saveState(player)

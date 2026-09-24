@@ -329,3 +329,16 @@ UIController.ClaimAlerts binds the authored Alerts child (plural) of DailyReward
 RebirthRewards now clones only Assets.IncomeBoostTemp, PopulationBoostTemp and BuildingTemp (and optional XPBoostTemp if authored). Boost cards retain Now/Next values and building cards retain BuildingName/BuildingIcon binding. Removed generated summary, fallback boost/building labels, headings, empty-level text and generated UIListLayout. Missing templates produce no substitute UI. Cleanup only deletes tagged reward clones, preserving authored children/layouts. Gameplay rewards and the existing city-preserving/cash-reset policy are unchanged; the former generated preservation/reset summary is no longer inserted.
 
 Validation: test_daily_quest_ui covers authoritative daily eligibility, closed-panel deadlines, late badges, rejected/pending/claimed quests and expired boards; test_notification_center verifies construction starts are silent; test_rebirth_appearance verifies template-only rendering, missing templates and authored-child preservation. Required network/startup/persistence/receipt/security/cleanup/progression checks, source compilation (259 source / 37 tooling files), and path/helper audits pass. These are local mock/source checks, not a Studio visual test.
+
+## Placement refused at land edges/corners (2026-09-23, player report)
+
+Symptom: a building placed flush against an edge or corner of owned land, not overlapping locked land, was refused while the preview looked valid, with no message.
+Cause: server overlap treated every descendant of Land.Locked (expansion signs, locked scenery overhanging owned land) and neighbours' Hitboxes as blockers; the client checked different parts. The client's failure notice used FireServer on a remote the server never handles.
+Fix: shared.util.PlacementRules (owned-tile coverage + Base-footprint separating-axis overlap, 0.05 stud tolerance) is used by both preview and server; rejections return a reason shown in the notification feed.
+Verify in Play: buy land so a locked tile with its sign borders your city; place 2x2 and larger buildings flush in that corner at all four rotations (expect success); nudge one stud onto locked land (expect "outside your land"); place flush beside another building (success) and one stud into it (expect "overlaps another building").
+
+## Stuck Robux purchases (2026-09-23)
+
+Symptom: after a lost cancellation or disconnect, every later purchase at the same Robux price was refused with "needs recovery"; receipts with no recorded choice stayed pending forever.
+Fix: prompts archive an unbound old choice instead of refusing; receipts resolve open choice -> archived choice -> equal-value compensation (best building in that Robux tier); overdue blocked steals deliver the saved snapshot after 10 minutes. See AGENTS.md for the exact order.
+Verify in Play (test products): open a building prompt and leave the server before answering, rejoin, and buy a different building at the same price (expect the prompt to open). Buy two buildings at one price in quick succession (expect both granted). Check the Output for "[Receipts] Deferred" warnings.

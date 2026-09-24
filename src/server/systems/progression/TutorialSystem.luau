@@ -29,7 +29,18 @@ function Tutorial.prepareForJoin(player)
 		return
 	end
 	player:SetAttribute("MyCityTutorialPrepared", true)
-	local replay = ReplayConfig.ReplayEveryJoin and player.UserId == ReplayConfig.OwnerUserId
+	local owner = player.UserId == ReplayConfig.OwnerUserId
+	if owner and ReplayConfig.SkipTutorial then
+		-- The owner never sees the tutorial (also after an owner fresh-profile reset).
+		local tutorial = player.Data.PlayerInfo.Tutorial
+		tutorial.ServerStage.Value = 7
+		tutorial.IsInTutorial.Value = false
+		tutorial.NewPlayer.Value = false
+		tutorial.StarterBuilding.Value = true
+		player:SetAttribute("MyCityTutorialReplay", false)
+		return
+	end
+	local replay = ReplayConfig.ReplayEveryJoin and owner
 	player:SetAttribute("MyCityTutorialReplay", replay == true)
 	if not replay then
 		return

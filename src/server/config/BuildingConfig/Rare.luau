@@ -90,6 +90,21 @@ return {
 		BuildLimit = 3,
 	},
 
+	SolarTower = {
+		DisplayName = "Solar Tower",
+		Description = "Clean power from the sun",
+		Size = "3x3",
+		BuildTime = 380,
+		Cost = 180000,
+		Income = 300,
+		Population = 40,
+		-- ImageId: add the shop/inventory icon asset id here.
+		Rarity = "Rare",
+		RebirthRequired = 0,
+		PopulationRequired = 14000,
+		BuildLimit = 5,
+	},
+
 	OfficeBuilding = {
 		DisplayName = "Office Building",
 		Description = "Corporate headquarters",

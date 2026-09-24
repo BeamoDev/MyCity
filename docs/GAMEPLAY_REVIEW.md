@@ -29,6 +29,8 @@ Daily rewards are also generous relative to early-game prices: day 7 grants Auro
 
 ## Remaining blockers and limits
 
+> Update 2026-09-23: blockers 1 and 2 below are addressed by intent archiving, equal-value compensation and the 10-minute steal snapshot fallback (see AGENTS.md "Road cars, purchase recovery..."). Live receipt testing is still required.
+
 1. **High ? ambiguous historical paid targets.** An unresolved per-price product intent can block another purchase at that price after a lost cancellation/disconnect. Receipts contain the product ID, not the chosen building. Automatically expiring/replacing such intents could give a paid buyer the wrong item. Failed-prompt recovery is fixed; older ambiguous targets still need a recovery/product-mapping design. Distinct product IDs per building would remove this ambiguity for future sales, but would require Creator Hub product setup and migration.
 2. **High ? cross-player steal target changes.** An owner can delete/move/complete the selected target before receipt fulfillment, or be locked in another server. Transfer processing safely defers but can remain unresolved. Buyer compensation/reservation policy and multiplayer recovery tests remain necessary.
 3. **Live validation ? assets/products/UI.** Local source does not contain the authored models or all GUI purchase scripts. Bundles and pass buttons are not all prompted from the exported backend. Their Studio bindings cannot be certified here. Product sale status, ownership, displayed prices and regional pricing require current Roblox metadata. Shop labels still use configured price tiers, so check them against live prices.

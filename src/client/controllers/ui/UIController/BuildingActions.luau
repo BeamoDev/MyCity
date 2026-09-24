@@ -15,14 +15,6 @@ return function(Context)
 		local CollectButton = Buttonsframe:FindFirstChild("Collect")
 		local DeleteButton = Buttonsframe:FindFirstChild("Delete")
 
-		if DeleteButton then
-			local label = DeleteButton:FindFirstChild("TextLabel")
-			if label then
-				label.Text = "Store"
-			elseif DeleteButton:IsA("TextButton") then
-				DeleteButton.Text = "Store"
-			end
-		end
 		if not DeleteButton or not CollectButton then
 			return
 		end

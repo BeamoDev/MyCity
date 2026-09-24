@@ -38,7 +38,7 @@ return function(Context)
 
 		Context.updateBuildingVisuals(true)
 		if not state.canPlace then
-			ReplicatedStorage.Events.Movement.CannotPlace:FireServer()
+			Context.notifyPlacementFailure(state.placementReason)
 			if SoundService:FindFirstChild("SFX") and SoundService.SFX:FindFirstChild("ErrorSound") then
 				SoundService.SFX.ErrorSound:Play()
 			end
@@ -64,7 +64,7 @@ return function(Context)
 		local cframe = target * templateBase.CFrame:ToObjectSpace(template.PrimaryPart.CFrame)
 		Context.startPlacementCooldown()
 		state.placing = true
-		local ok, success = pcall(function()
+		local ok, success, reason = pcall(function()
 			return ReplicatedStorage.Functions.PlaceBlock:InvokeServer(cframe, tool)
 		end)
 		if state.generation ~= generation then
@@ -74,7 +74,7 @@ return function(Context)
 		if ok and success then
 			Context.cleanup()
 		else
-			ReplicatedStorage.Events.Movement.CannotPlace:FireServer()
+			Context.notifyPlacementFailure(if ok then reason else nil)
 		end
 	end
 

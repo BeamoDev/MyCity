@@ -18,6 +18,11 @@ return function(Context)
 		if not buildingType then
 			return
 		end
+		local catalogue = require(script.Parent.Parent.Parent.Parent.Parent.config.BuildingConfig)
+		local definition = catalogue[buildingType]
+		if definition and definition.NoLevels then
+			return
+		end
 
 		local configFolder = building:FindFirstChild("Config")
 		if configFolder then
