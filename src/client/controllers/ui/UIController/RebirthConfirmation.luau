@@ -12,7 +12,12 @@ return function(Context)
 			warn("[Rebirth] Missing RebirthConfirm.Frame.ScrollingFrame")
 			return
 		end
-		Rewards.render(scrollingFrame, data, Context.ReplicatedStorage:WaitForChild("Assets"))
+		Rewards.render(
+			scrollingFrame,
+			data,
+			Context.ReplicatedStorage:WaitForChild("Assets"),
+			Context.BuildingViewport
+		)
 		if State.confirmYesConnection then
 			State.confirmYesConnection:Disconnect()
 			State.confirmYesConnection = nil

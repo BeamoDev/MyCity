@@ -16,7 +16,7 @@ return function(Context)
 		-- Set basic info
 		frame.ItemName.Text = item.DisplayName or item.Name
 		frame.Description.Text = item.Description or ""
-		frame.BuildingIcon.ImageLabel.Image = "rbxassetid://" .. tostring(item.ImageID)
+		Context.createBuildingViewport(frame, item.Name)
 
 		-- Set rarity colors for backgrounds
 		local rarityColor = RARITY_COLORS[item.Rarity] or RARITY_COLORS.Common
@@ -270,6 +270,7 @@ return function(Context)
 		end)
 
 		-- Clear existing items
+		Context.clearViewportPreviews()
 		for _, child in pairs(State.ItemList:GetChildren()) do
 			if child:IsA("Frame") and child.Name ~= "ItemTemplate" then
 				Context.clearButtonConnections(child.Name)
@@ -283,6 +284,22 @@ return function(Context)
 			frame.LayoutOrder = i * 2
 			frame.Parent = State.ItemList
 		end
+
+		-- Keep the final catalogue card clear of the ScrollingFrame's lower clipping edge.
+		-- The spacer remains visible for UIListLayout to include it, but renders nothing.
+		local padding = Instance.new("Frame")
+		padding.Name = "ShopBottomPadding1"
+		padding.BackgroundTransparency = 1
+		padding.BorderSizePixel = 0
+		padding.Size = UDim2.fromScale(1, 0.9)
+		padding.LayoutOrder = (#stock + 1) * 2
+		padding.Active = false
+		padding.Selectable = false
+		local aspect = Instance.new("UIAspectRatioConstraint")
+		aspect.AspectRatio = 3
+		aspect.DominantAxis = Enum.DominantAxis.Width
+		aspect.Parent = padding
+		padding.Parent = State.ItemList
 
 		Context.startResetCountdown(timer)
 

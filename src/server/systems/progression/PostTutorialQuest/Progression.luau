@@ -105,18 +105,25 @@ return function(Context)
 		end
 
 		-- mark current step as completed in the persisted counter
-		state.progressionValue.Value = math.max(state.progressionValue.Value or 0, state.step)
+		local completedStep = state.step
+		state.progressionValue.Value = math.max(state.progressionValue.Value or 0, completedStep)
 
 		-- advance
 		state.step += 1
 		state.completing = false
 		state.progress = 0
 		Context.saveState(player)
+		if Context.Analytics then
+			Context.Analytics.Quest.Completed(player, completedStep, quest.id)
+		end
 		evComplete:FireClient(player, quest.title, Context.rewardView(quest.reward))
 
 		if state.step > #QUESTS then
 			state.completed = true
 			Context.saveState(player) -- writes completed flag and clears progress
+			if Context.Analytics then
+				Context.Analytics.Quest.AllCompleted(player)
+			end
 			evAllDone:FireClient(player)
 			return
 		end

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 require(game:GetService("ReplicatedStorage"):WaitForChild("shared"):WaitForChild("Network")).wait()
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local BuildingViewport = require(script.Parent.Parent:WaitForChild("ui"):WaitForChild("BuildingViewport"))
 
 State.playerGui = nil
 State.ShopFrame = nil
@@ -13,6 +14,8 @@ State.PurchaseFrameTemplate = nil
 State.ItemTemplate = nil
 State.ItemList = nil
 State.ResetTimerLabel = nil
+State.BuildingPreviews = nil
+State.viewportPreviews = {}
 
 local RESET_INTERVAL = 300
 State.remainingTime = RESET_INTERVAL
@@ -53,6 +56,7 @@ local Context = {
 	ReplicatedStorage = ReplicatedStorage,
 	RunService = RunService,
 	Players = Players,
+	BuildingViewport = BuildingViewport,
 	RESET_INTERVAL = RESET_INTERVAL,
 	buttonConnections = buttonConnections,
 	ShopEvent = ShopEvent,
@@ -62,10 +66,13 @@ local Context = {
 }
 require(script:WaitForChild("Formatting"))(Context)
 require(script:WaitForChild("PurchasePanel"))(Context)
+require(script:WaitForChild("ViewportPreviews"))(Context)
 require(script:WaitForChild("StockDisplay"))(Context)
 require(script:WaitForChild("Lifecycle"))(Context)
 
 ShopController.clearConnections = function()
+	Context.stopViewportAnimation()
 	Context.connections:clear()
+	Context.clearViewportPreviews()
 end
 return ShopController

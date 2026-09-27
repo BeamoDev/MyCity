@@ -69,6 +69,7 @@ function Bootstrap.start()
 		),
 		CivilianSystem = require(script.Parent.Parent.systems.world.CivilianSystem),
 		RoadTraffic = require(script.Parent.Parent.systems.world.RoadTraffic),
+		AirportSystem = require(script.Parent.Parent.systems.world.AirportSystem),
 		DailyRewards = require(
 			script.Parent.Parent:WaitForChild("systems"):WaitForChild("progression"):WaitForChild("DailyRewards")
 		),
@@ -79,6 +80,7 @@ function Bootstrap.start()
 			script.Parent.Parent:WaitForChild("systems"):WaitForChild("progression"):WaitForChild("PostTutorialQuest")
 		),
 	}
+	systems.PostTutorialQuest.setAnalytics(systems.FunnelAnalytics)
 	for _, name in
 		{
 			"PlayerDataModule",
@@ -101,6 +103,7 @@ function Bootstrap.start()
 			"CivilianSystem",
 			"TrainSystem",
 			"RoadTraffic",
+			"AirportSystem",
 			"PostTutorialQuest",
 			"DailyRewards",
 			"DailyQuests",

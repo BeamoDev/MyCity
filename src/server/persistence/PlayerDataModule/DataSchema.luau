@@ -33,6 +33,8 @@ function Schema.CreateDefault(playerName, now)
 				FirstLegendary = flag(false),
 				GroupRewardClaimed = flag(false),
 				LimitedPrompted = flag(false),
+				ProgressionFunnelVersion = number(0),
+				ProgressionFunnelId = value("StringValue", ""),
 				SchemaVersion = number(Schema.Version),
 				Tutorial = {
 					IsInTutorial = flag(true),

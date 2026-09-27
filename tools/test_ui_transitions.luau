@@ -1,6 +1,12 @@
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local r = require("@lune/roblox")
+local buttonSource = fs.readFile("src/client/controllers/ui/UIController/Buttons.luau")
+assert(buttonSource:find('FindFirstChild%("TextLabel1"%)'), "BuilderPack TextLabel1 attention target is missing")
+assert(buttonSource:find('FindFirstChild%("Icon"%)'), "BuilderPack Icon attention target is missing")
+assert(buttonSource:find("Rotation = %-25") and buttonSource:find("Rotation = %-15"), "BuilderPack text wobble angles changed")
+assert(buttonSource:find("NextNumber%(7, 12%)") and buttonSource:find("NextNumber%(9, 15%)"), "BuilderPack animations are not occasional")
+assert(buttonSource:find("cleanupBuilderPackAttention"), "BuilderPack attention state is not cleaned up")
 local tweens = {}
 local service = {
 	Create = function(_, node, _, props)

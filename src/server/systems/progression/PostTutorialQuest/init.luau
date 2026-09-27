@@ -39,4 +39,8 @@ require(script:WaitForChild("Progression"))(Context)
 require(script:WaitForChild("Objectives"))(Context)
 require(script:WaitForChild("Lifecycle"))(Context)
 
+function PostTutorialQuest.setAnalytics(analytics)
+	Context.Analytics = analytics
+end
+
 return PostTutorialQuest

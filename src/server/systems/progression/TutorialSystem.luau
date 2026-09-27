@@ -7,6 +7,21 @@ local events = ReplicatedStorage.Events.Tutorial
 local Tutorial = { createToolWithBuilding = Factory.create }
 local boundTools = setmetatable({}, { __mode = "k" })
 
+local function bindTutorialTool(player, tool, buildingName)
+	if not tool or boundTools[tool] or not tool.Equipped then
+		return
+	end
+	boundTools[tool] = true
+	tool.Equipped:Connect(function()
+		events.ToolEquipped:FireClient(player)
+		if buildingName == "Bank" then
+			Analytics.Tutorial.BankEquipped(player)
+		elseif buildingName == "Shack" then
+			Analytics.Tutorial.ShackEquipped(player)
+		end
+	end)
+end
+
 local function state(player)
 	local data = player:FindFirstChild("Data")
 	local info = data and data:FindFirstChild("PlayerInfo")
@@ -69,14 +84,11 @@ function Tutorial.giveBankTool(player)
 			local existing = container and container:FindFirstChild("Bank")
 			if existing then
 				stage.Value = 1
-				if not boundTools[existing] then
-					boundTools[existing] = true
-					existing.Equipped:Connect(function()
-						events.ToolEquipped:FireClient(player)
-					end)
-				end
+				bindTutorialTool(player, existing, "Bank")
+				Analytics.Tutorial.BankGiven(player)
 				if existing.Parent == player.Character then
 					events.ToolEquipped:FireClient(player)
+					Analytics.Tutorial.BankEquipped(player)
 				end
 				return true
 			end
@@ -92,10 +104,7 @@ function Tutorial.giveBankTool(player)
 	end
 	stage.Value = 1
 	tool.Parent = backpack
-	boundTools[tool] = true
-	tool.Equipped:Connect(function()
-		events.ToolEquipped:FireClient(player)
-	end)
+	bindTutorialTool(player, tool, "Bank")
 	Analytics.Tutorial.BankGiven(player)
 	return true
 end
@@ -115,6 +124,7 @@ function Tutorial.handleBuildingPlacement(player, buildingName, buildingId)
 		player:SetAttribute("TutorialShackTargetId", buildingId)
 		stage.Value = 6
 		events.ShackConstructionStarted:FireClient(player)
+		Analytics.Tutorial.ShackPlaced(player)
 	end
 end
 
@@ -136,7 +146,7 @@ function Tutorial.handleConstructionComplete(player, buildingName, buildingId)
 	elseif buildingName == "Shack" and stage.Value >= 5 and stage.Value < 7 then
 		stage.Value = 7
 		events.ShackPlaced:FireClient(player)
-		Analytics.Tutorial.ShackPlaced(player)
+		Analytics.Tutorial.ShackBuilt(player)
 	end
 end
 
@@ -156,6 +166,8 @@ function Tutorial.handleShackPurchase(player)
 		return
 	end
 	stage.Value = 5
+	local backpack = player:FindFirstChild("Backpack")
+	bindTutorialTool(player, backpack and backpack:FindFirstChild("Shack"), "Shack")
 	events.ShackPurchased:FireClient(player)
 	Analytics.Tutorial.ShackPurchased(player)
 end
@@ -234,6 +246,7 @@ function Tutorial.init()
 	end)
 	events.RequestStart.OnServerEvent:Connect(function(player)
 		if Guard.ready(player) and state(player) then
+			Analytics.Tutorial.Started(player)
 			events.StartTutorial:FireClient(player)
 		end
 	end)

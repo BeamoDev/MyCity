@@ -1,5 +1,53 @@
 # MyCity backend audit and refactor
 
+## Empty income collection is silent (2026-09-27)
+
+IncomeSystem.Collection no longer fires `ErrorEvent` with "No income to collect!" when the collection total is zero. It simply releases the collection debounce and returns. Ownership/security errors remain visible, and successful collection still credits cash, advances quests/tutorial state and drives the existing cash feedback.
+
+## Central airport aircraft system (2026-09-27)
+
+The supplied Airport-embedded script repeatedly searched attachments, drove only PrimaryPart through long TweenService movements, paused at every taxi waypoint, chained overlapping arrivals through a BindableEvent and left its orientation offset at zero. `server.systems.world.AirportSystem` now owns the complete lifecycle for every placed Airport. It caches the existing A1/D1 routes, permits one aircraft per runway, moves the whole anchored/collisionless Model with real-time phase speeds, blends headings into turns, waits only at an explicitly paused point or the arrival gate, and cancels cleanly when Airport is removed. After the first central speeds still made the compact route complete too quickly, movement was reduced to 2 studs/s airborne, 1.5 braking/takeoff and 0.2 taxi/gate, with 4-6 second minimum legs. The full cycle now plays over minutes rather than seconds. Legacy BaseScripts are disabled in both the server template and placed Airport.
+
+Follow-up: construction sites also expose `BuildingType=Airport` but do not contain A1/D1 route Attachments. Detection now requires the Airport model to be directly inside `Buildings.Placed`, eliminating false missing-ApproachPoint warnings and delaying traffic initialization until construction completes.
+
+The first +90-degree yaw correction did not match the imported model in Studio. Per the observed pose, the defaults now add another 90 degrees right (`PlaneYaw=180` total) and pitch 90 degrees down (`PlanePitch=-90`). Per-template or per-Airport attributes can override either correction. Route height remains authored entirely through Attachment positions.
+
+Follow-up runway presentation: all route positions are lowered 0.2 studs total at runtime (raised 0.05 from the prior -0.25 setting). Touchdown now uses sine in/out interpolation and smoothly develops a 7-degree flare during its final 45%; the braking leg uses cubic ease-out for continuous deceleration and removes the flare smoothly as the aircraft settles. Gate and takeoff-start motion also use smootherstep, while taxi heading blending remains active.
+
+Departure pitch-jump fix: the movement fallback previously read the visually corrected plane Pivot LookVector. Because the imported model uses a -90-degree pitch correction, overlapping/near-zero D1 legs interpreted that visual axis as flight direction and pitched vertically at waypoints. Heading fallback now comes only from next/previous route geometry, and all braking/gate/taxi/takeoff-start directions are projected onto X/Z. Liftoff and Departure retain their authored vertical climb.
+
+## Shop lower-edge clipping padding (2026-09-27)
+
+One transparent, non-interactive 1x0.9-scale layout frame with a width-dominant aspect ratio of 3 is now appended after the final shop item on every refresh. It is visually empty but remains layout-visible, extending the automatic canvas so the Airport/final catalogue cards can scroll above the lower clipping edge.
+
+## Builder Pack label/icon attention (2026-09-27)
+
+The Builder Pack HUD button now runs two independent, occasional cleanup-owned animations: TextLabel1 pulses to 1.14x while moving through -25/-15/-25 degrees, and Icon pulses to 1.16x while rocking +12/-8 degrees around its authored rotation. Both restore authored rotation and UIScale after each pass and during HUD teardown. No background, stroke, shine or whole-button effect was reintroduced.
+
+## Building icons replaced by shared 3D previews, excluding inventory (2026-09-27)
+
+Shared client BuildingViewport now replaces building ImageLabel content in Shop, SellTool, both BuildingInfo layouts, rebirth building-unlock cards and post-tutorial building rewards. It clears each old image and mounts a transparent ViewportFrame/WorldModel/camera using Assets.BuildingPreviews. Inventory is intentionally unchanged: ToolFactory still authors TextureId and Satchel still assigns it to ToolIcon. Unrelated player, currency, weather, settings and input images remain. Rebirth unlock payloads now include the stable BuildingConfig key needed to resolve models.
+
+Models are bounds-centered, rotate at 18 degrees/second and exclude Hitbox. The user reverted live world/color-correction mapping to the original fixed viewport lighting: Ambient RGB(145,145,155), warm LightColor RGB(255,244,225), direction (-1,-1,-0.65). One 30 Hz renderer serves every surface; hidden/offscreen models release after two seconds and return on visibility. Shop additionally clips work to its ScrollingFrame. Preview geometry is anchored/non-colliding and stripped of scripts, prompts and LayerCollectors.
+
+Local validation: all 46 suites pass, including all five viewport consumers, restored fixed lighting, rebirth keys and explicit Satchel TextureId preservation. All 277 source and 51 tooling files compile; 456 literal local requires resolve with only the existing Studio-authored TopbarPlus target, and extracted dependency checks pass. Studio remains required for visual and mobile-cost verification.
+
+## Military Base flight and new buildings (2026-09-27)
+
+Added the authored `MilitaryBase` model to Epic and `SkyscraperGeneric` to Legendary. Their catalogue unlocks are 24 rebirths / 125,000 population, with limits 1 / 2. Their 5x5 and 4x4 construction sizes are best-fit assumptions because the synced source does not contain the Studio model dimensions; the existing startup template audit will identify a mismatch. Both omit ImageId; the shop now uses their models directly, while other icon-based surfaces still need real icon assets.
+
+MilitaryHelicopterController renders completed Military Base helicopters entirely on each client. Its sanitized clone flies inside a closer 9-stud default boundary, using smooth deterministic radius/offset/altitude harmonics for tighter/wider and lower/higher passes. Orbit speed is now 0.88/3 rad/s, twice the previous 0.44/3 setting. A +90-degree default yaw corrects the reported left-side-leading orientation; dynamic bank ranges 5-15 degrees and pitch varies +/-4 degrees along the 3D route. Default centre altitude is two studs below the authored Heli height (minimum 8), with smooth variation around it. Every clone BasePart resets LocalTransparencyModifier to zero. Direct Heli children `MainBlades`, `Body` and `RearRotor` remain the preferred layout, with legacy aliases and replication-aware startup. The clone is collisionless, contains no scripts/constraints/prompts, cleans up with the building and does not affect persistence or server replication.
+
+Local validation: all 46 suites pass, including the catalogue/flight/blade regression. All 277 source and 51 tooling files compile; 456 literal local requires resolve, with only the existing Studio-authored TopbarPlus target; extracted dependency checks pass. Studio still needs verification of Base footprints, flight facing/height and blade pivots.
+
+## Lifetime progression analytics (2026-09-27)
+
+The former onboarding funnel stopped after nine tutorial events, omitted TutorialStarted in live calls, combined Shack placement with construction completion, and had all post-tutorial analytics commented out. A single new `NewPlayerProgression_v1` funnel now records 49 ordered milestones: new profile joined; TutorialStarted, Bank received/equipped/placed/constructed, income, shop, Shack purchased/equipped/placed/constructed, tutorial complete; every one of the 35 append-only quest completions; and the final all-progression completion.
+
+Enrollment is limited to genuinely new profiles created after deployment. DataSchema adds persisted `ProgressionFunnelVersion` and `ProgressionFunnelId` values without changing schema version 5; existing profiles normalize to version 0 and are excluded. New-profile status comes from the acquired envelope before restoration. Rejoins reuse the saved funnel session and reconcile durable tutorial/quest progress. Quest events occur after reward delivery and progression-state advancement. Analytics errors remain isolated from gameplay, and the owner is excluded.
+
+Local validation covers the exact step mapping, fresh/established/owner enrollment boundaries and rejoin reconciliation. All 44 test suites pass; 274 source and 49 tooling files compile; path and extracted-module dependency audits pass. Creator Analytics ingestion and display require a published-server test; no publish was performed.
+
 ## Epic stock availability (2026-09-20)
 
 The supplied feedback describes four missed Shopping Mall restocks. Source confirmed that the Mall's limited-building override gave only a 26.7% chance of positive stock (60% immediate rejection, then a uniform 0–2 roll). Four consecutive misses had about a 28.9% probability. This supports the complaint without proving which published version the player used.

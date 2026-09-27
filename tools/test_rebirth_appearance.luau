@@ -40,17 +40,23 @@ end
 local buildingCard = item("Frame", "BuildingTemp", templates)
 item("TextLabel", "BuildingName", buildingCard)
 item("ImageLabel", "BuildingIcon", buildingCard)
-data.unlockedBuildings[1].imageId = 123
-rewards.render(scroll, data, templates)
+data.unlockedBuildings[1].building = "IceCreamStore"
+local viewportCalls = {}
+local viewport = { attach = function(icon, building)
+	table.insert(viewportCalls, { icon, building })
+	icon.Image = ""
+end }
+rewards.render(scroll, data, templates, viewport)
 assert(scroll.IncomeBoost.Now.Text == "x 1.00" and scroll.IncomeBoost.Next.Text == "x 1.15")
 assert(scroll.PopulationBoost.Next.Text == "x 1.15" and scroll["Building XPBoost"].Next.Text == "x 1.15")
 assert(
 	scroll.Building_1.BuildingName.Text == "Ice Cream Store"
-		and scroll.Building_1.BuildingIcon.Image == "rbxassetid://123"
+		and scroll.Building_1.BuildingIcon.Image == ""
+		and viewportCalls[1][2] == "IceCreamStore"
 )
 assert(scroll.Building_2.BuildingName.Text == "Donut Store")
 local count = #scroll:GetChildren()
-rewards.render(scroll, data, templates)
+rewards.render(scroll, data, templates, viewport)
 assert(
 	#scroll:GetChildren() == count
 		and decoration.Parent == scroll

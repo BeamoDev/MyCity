@@ -164,6 +164,15 @@ return function(Context)
 			completedValue = completedValue,
 			progressionValue = questProgValue,
 		}
+		if Context.Analytics then
+			local completedIndex = math.clamp(questProgValue.Value or 0, 1, #QUESTS)
+			Context.Analytics.Quest.Reconcile(
+				player,
+				questProgValue.Value or 0,
+				finished,
+				QUESTS[completedIndex].id
+			)
+		end
 
 	end
 

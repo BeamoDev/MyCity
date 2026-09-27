@@ -105,6 +105,21 @@ return {
 		BuildLimit = 3,
 	},
 
+	SkyscraperGeneric = {
+		DisplayName = "Grand Skyscraper",
+		Description = "A landmark at the heart of the skyline",
+		Size = "4x4",
+		BuildTime = 900,
+		Cost = 1150000,
+		Income = 1050,
+		Population = 220,
+		-- ImageId: add the shop/inventory icon asset id here.
+		Rarity = "Legendary",
+		RebirthRequired = 0,
+		PopulationRequired = 125000,
+		BuildLimit = 2,
+	},
+
 	EmpireState = {
 		DisplayName = "Empire State Building",
 		Description = "Icon of ambition",

@@ -208,6 +208,7 @@ for _, scenario in { "canceled", "normal", "buildings_error", "badge_error", "qu
 		IncomeSystem = { setupPlayerIncome = noop, collectPendingIncome = noop, cleanupPlayer = noop },
 		RebirthSystem = { initializePlayer = noop },
 		TutorialSystem = { prepareForJoin = noop, resume = noop },
+		FunnelAnalytics = { prepareProgression = noop },
 		PostTutorialQuest = { initializePlayer = noop },
 		DailyQuests = { initializePlayer = noop },
 		BadgeSystem = { AwardBadge = noop },

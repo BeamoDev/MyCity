@@ -1,6 +1,7 @@
 -- Render the latest server snapshot; old completion effects cannot overwrite it.
 return function(Context)
 	local State, events = Context.State, Context.questEvents
+	local BuildingViewport = Context.BuildingViewport
 	local version, fillTween = 0, nil
 	local latest
 	local positionTween
@@ -79,6 +80,10 @@ return function(Context)
 			for _, name in { "MansionIcon", "CashIcon", "ApartmentsIcon" } do
 				local icon = section:FindFirstChild(name)
 				if icon then
+					if name ~= "CashIcon" then
+						BuildingViewport.detach(icon)
+						if icon:IsA("ImageLabel") or icon:IsA("ImageButton") then icon.Image = "" end
+					end
 					icon.Visible = reward ~= nil
 						and (
 							(name == "CashIcon" and reward.type == "cash")
@@ -87,6 +92,11 @@ return function(Context)
 							or (name == "MansionIcon" and reward.type == "building" and reward.building ~= "Apartments")
 						)
 				end
+			end
+			if reward and reward.type == "building" and reward.building then
+				local hostName = if reward.building == "Apartments" then "ApartmentsIcon" else "MansionIcon"
+				local host = section:FindFirstChild(hostName)
+				if host and host:IsA("GuiObject") then BuildingViewport.attach(host, reward.building) end
 			end
 			local info = section:FindFirstChild("Reward")
 			if info and reward then

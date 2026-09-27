@@ -114,7 +114,6 @@ return function(Context)
 		local totalIncome = IncomeSystem.calculateAndStackBuildingIncome(player)
 
 		if totalIncome <= 0 then
-			errorEvent:FireClient(player, "No income to collect!")
 			buttonDebounces[debounceKey] = false
 			return
 		end

@@ -33,11 +33,18 @@ return function(Context)
 		State.playerGui = gui
 
 		local shopAssets = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Shop")
+		State.BuildingPreviews = ReplicatedStorage.Assets:FindFirstChild("BuildingPreviews")
 		State.ShopFrame = State.playerGui.Frames.ItemShop.Frame
 		State.PurchaseFrameTemplate = shopAssets:WaitForChild("PurchaseFrame")
 		State.ItemTemplate = shopAssets:WaitForChild("ItemTemplate")
 		State.ItemList = State.ShopFrame.ScrollingFrame
 		State.ResetTimerLabel = State.ShopFrame.RestockTimerFrame.Pattern:WaitForChild("TextLabel")
+		if Context.clearViewportPreviews then
+			Context.clearViewportPreviews()
+		end
+		if Context.startViewportAnimation then
+			Context.startViewportAnimation()
+		end
 
 		-- Connect shop events
 		Context.connections:connect(ShopEvent.OnClientEvent, function(action, ...)

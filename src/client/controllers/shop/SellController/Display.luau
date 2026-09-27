@@ -2,6 +2,7 @@
 return function(Context)
 	local State = Context.State
 	local TweenService = Context.TweenService
+	local BuildingViewport = Context.BuildingViewport
 
 	function Context.setUIState(state, tool, sellPrice, imageId, statusText)
 		State.currentUIState = state
@@ -13,7 +14,7 @@ return function(Context)
 
 		if tool then
 			State.equippedToolName.Text = tool.Name
-			State.equippedToolIcon.Image = "rbxassetid://" .. (imageId or 0)
+			BuildingViewport.attach(State.equippedToolIcon, tool.Name)
 
 			local toolLevel = tool:FindFirstChild("BuildingLevel")
 			if toolLevel then
@@ -21,7 +22,8 @@ return function(Context)
 			end
 		else
 			State.equippedToolName.Text = "No Tool Equipped"
-			State.equippedToolIcon.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+			BuildingViewport.detach(State.equippedToolIcon)
+			State.equippedToolIcon.Image = ""
 		end
 
 		if state == "no_tool" then

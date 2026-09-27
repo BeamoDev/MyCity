@@ -104,6 +104,7 @@ function PlayerData.loadPlayerData(player)
 		return false
 	end
 	session.record = record
+	local isNewProfile = record.NewProfile == true
 	local restoreRecord
 	player:SetAttribute("MyCityLoadStage", "ProfileRestore")
 	local restored, data, stats = xpcall(function()
@@ -130,6 +131,7 @@ function PlayerData.loadPlayerData(player)
 	end
 	data.Parent = player
 	stats.Parent = player
+	player:SetAttribute("MyCityNewProfile", isNewProfile)
 	session.record = restoreRecord
 	session.loaded = true
 	return true

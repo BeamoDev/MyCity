@@ -1,4 +1,6 @@
 local fs = require("@lune/fs")
+local incomeCollectionSource = fs.readFile("src/server/systems/economy/IncomeSystem/Collection.luau")
+assert(not incomeCollectionSource:find("No income to collect", 1, true), "Empty income collection still sends an alert")
 local luau = require("@lune/luau")
 local r = require("@lune/roblox")
 local function load(name, env)
