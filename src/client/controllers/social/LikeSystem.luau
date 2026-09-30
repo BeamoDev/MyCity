@@ -41,9 +41,12 @@ function LikesHandler.init(playerGui)
 			title = "City Rating"
 		end
 
+		local text = if title == "LikeConfirmed" or title == "UnoccupiedPlot"
+			then tostring(message)
+			else tostring(title) .. ": " .. tostring(message)
 		require(script.Parent.Parent.ui.NotificationController).showNotification(
 			"CityRating",
-			tostring(title) .. ": " .. tostring(message)
+			text
 		)
 	end)
 end

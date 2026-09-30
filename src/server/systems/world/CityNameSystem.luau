@@ -6,7 +6,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
 local Workspace = game:GetService("Workspace")
 local DataStoreService = game:GetService("DataStoreService")
-local RunService = game:GetService("RunService")
 
 local plotsFolder = Workspace:WaitForChild("Plots")
 local cityNameDataStore = DataStoreService:GetDataStore("CityNames")
@@ -18,40 +17,38 @@ local UpdateCityNameEvent = citySignFolder:FindFirstChild("UpdateCityName")
 local RequestCityNameEditEvent = citySignFolder:FindFirstChild("RequestCityNameEdit")
 
 local cityNameCache = {}
+local SAFE_NAME = "My City"
+local FILTERED_RECORD_VERSION = 1
 
-local function truncate(text)
+local function normalize(text)
 	if type(text) ~= "string" or not utf8.len(text) then
 		return nil
 	end
+	text = text:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	if text == "" then return nil end
 	local boundary = utf8.offset(text, 51)
-	return if boundary then text:sub(1, boundary - 1) else text
+	text = if boundary then text:sub(1, boundary - 1) else text
+	return if text:match("^#+$") then nil else text
 end
 local function filterText(text, player)
-	local isStudio = RunService:IsStudio()
-
-	if isStudio then
-		text = truncate(text)
-		return text
-	end
-
-	local success, filteredTextResult = pcall(function()
-		return TextService:FilterStringAsync(text, player.UserId)
+	text = normalize(text)
+	if not text then return nil end
+	local success, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(text, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
 	end)
+	return if success then normalize(filtered) else nil
+end
 
-	if success then
-		local finalText
-		local filterSuccess, filterError = pcall(function()
-			finalText = filteredTextResult:GetNonChatStringForBroadcastAsync()
-		end)
-
-		if filterSuccess then
-			return finalText
-		else
-			return nil
-		end
-	else
-		return nil
-	end
+function CityNameSystem.sanitizeProfileName(player, data)
+	local info = data:FindFirstChild("PlayerInfo")
+	local cityName = info and info:FindFirstChild("CityName")
+	local filteredFlag = info and info:FindFirstChild("CityNameFiltered")
+	if not cityName then return SAFE_NAME end
+	local safe = if filteredFlag and filteredFlag.Value then normalize(cityName.Value) else filterText(cityName.Value, player)
+	cityName.Value = safe or SAFE_NAME
+	if filteredFlag then filteredFlag.Value = true end
+	return cityName.Value
 end
 
 local function updateCitySign(plot, cityName)
@@ -75,12 +72,20 @@ local function getPlayerPlot(player)
 	end
 
 	local plot = plotsFolder:FindFirstChild("Plot" .. plotData.Value)
-	return plot
+	return if plot
+		and plot:GetAttribute("Assigned") == true
+		and tonumber(plot:GetAttribute("CityId")) == player.UserId
+		then plot else nil
 end
 
 function CityNameSystem.saveCityName(player, cityName)
 	for attempt = 1, 3 do
-		local success = pcall(cityNameDataStore.SetAsync, cityNameDataStore, tostring(player.UserId), cityName)
+		local success = pcall(
+			cityNameDataStore.SetAsync,
+			cityNameDataStore,
+			tostring(player.UserId),
+			{ Version = FILTERED_RECORD_VERSION, Text = cityName }
+		)
 		if success then
 			return true
 		end
@@ -96,22 +101,32 @@ function CityNameSystem.loadCityName(player)
 		return cityNameDataStore:GetAsync(tostring(player.UserId))
 	end)
 
-	if success and type(savedName) == "string" and savedName ~= "" and utf8.len(savedName) then
-		cityNameCache[player.UserId] = savedName
-		return savedName
-	else
-		local data = player:FindFirstChild("Data")
-		local info = data and data:FindFirstChild("PlayerInfo")
-		local previous = info and info:FindFirstChild("CityName")
-		local defaultName = if previous and previous.Value ~= "" then previous.Value else player.Name .. "'s City!"
-		cityNameCache[player.UserId] = defaultName
-		return defaultName
+	local data = player:FindFirstChild("Data")
+	local info = data and data:FindFirstChild("PlayerInfo")
+	local previous = info and info:FindFirstChild("CityName")
+	local filteredFlag = info and info:FindFirstChild("CityNameFiltered")
+	local name
+	if success and type(savedName) == "table" and savedName.Version == FILTERED_RECORD_VERSION then
+		name = normalize(savedName.Text)
+	elseif success and type(savedName) == "string" then
+		-- Old CityNames records have no proof of filtering.
+		name = filterText(savedName, player)
+	elseif previous and filteredFlag and filteredFlag.Value then
+		name = normalize(previous.Value)
+	elseif previous then
+		name = filterText(previous.Value, player)
 	end
+	name = name or SAFE_NAME
+	if previous then previous.Value = name end
+	if filteredFlag then filteredFlag.Value = true end
+	cityNameCache[player.UserId] = name
+	return name
 end
 
 function CityNameSystem.setCityName(player, newName, skipSave)
 	local playerInfo = player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayerInfo")
-	if not playerInfo then
+	local plot = getPlayerPlot(player)
+	if not playerInfo or not plot then
 		return false
 	end
 
@@ -119,19 +134,13 @@ function CityNameSystem.setCityName(player, newName, skipSave)
 	if not cityNameValue then
 		cityNameValue = Instance.new("StringValue")
 		cityNameValue.Name = "CityName"
-		cityNameValue.Value = player.Name .. "'s City!"
+		cityNameValue.Value = SAFE_NAME
 		cityNameValue.Parent = playerInfo
 	end
 
 	local filteredName = filterText(newName, player)
 	if not filteredName then
 		return false, "Your city name could not be filtered. Please try again."
-	end
-
-	filteredName = truncate(filteredName) or (player.Name .. "'s City!")
-
-	if string.len(filteredName) == 0 or filteredName == "########" then
-		filteredName = player.Name .. "'s City!"
 	end
 
 	if not skipSave and not CityNameSystem.saveCityName(player, filteredName) then
@@ -141,12 +150,11 @@ function CityNameSystem.setCityName(player, newName, skipSave)
 		return false
 	end
 	cityNameValue.Value = filteredName
+	local filteredFlag = playerInfo:FindFirstChild("CityNameFiltered")
+	if filteredFlag then filteredFlag.Value = true end
 	cityNameCache[player.UserId] = filteredName
 
-	local plot = getPlayerPlot(player)
-	if plot then
-		updateCitySign(plot, filteredName)
-	end
+	updateCitySign(plot, filteredName)
 
 	return true, filteredName
 end
@@ -158,16 +166,20 @@ function CityNameSystem.getCityName(player)
 
 	local playerInfo = player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayerInfo")
 	if not playerInfo then
-		return player.Name .. "'s City!"
+		return SAFE_NAME
 	end
 
 	local cityNameValue = playerInfo:FindFirstChild("CityName")
-	if cityNameValue and cityNameValue.Value ~= "" then
-		cityNameCache[player.UserId] = cityNameValue.Value
-		return cityNameValue.Value
+	local filteredFlag = playerInfo:FindFirstChild("CityNameFiltered")
+	if cityNameValue and filteredFlag and filteredFlag.Value then
+		local safe = normalize(cityNameValue.Value)
+		if safe then
+			cityNameCache[player.UserId] = safe
+			return safe
+		end
 	end
 
-	return player.Name .. "'s City!"
+	return SAFE_NAME
 end
 
 function CityNameSystem.revertCityName(player)
@@ -178,7 +190,7 @@ end
 function CityNameSystem.applyCityNameToPlot(player, plot)
 	local cityName = CityNameSystem.getCityName(player)
 
-	if plot then
+	if plot and plot == getPlayerPlot(player) then
 		updateCitySign(plot, cityName)
 	end
 end
@@ -194,7 +206,7 @@ function CityNameSystem.init()
 			return
 		end
 
-		newName = truncate(newName)
+		newName = normalize(newName)
 		if not newName then
 			UpdateCityNameEvent:FireClient(player, false, "Please enter a valid city name.")
 			return

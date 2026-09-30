@@ -104,6 +104,25 @@ function Service.start()
 	end
 
 	local handleLikeRequest
+	local function plotOccupied(plot)
+		local cityId = tonumber(plot:GetAttribute("CityId"))
+		return cityId ~= nil and cityId > 0 and plot:GetAttribute("Assigned") ~= false
+	end
+
+	local function updateLikeUIOccupancy(plot)
+		local ui = plot:FindFirstChild("UI")
+		local ratioSign = ui and ui:FindFirstChild("RatioSign")
+		if not ratioSign then return end
+		local occupied = plotOccupied(plot)
+		for _, child in ratioSign:GetDescendants() do
+			if child:IsA("LayerCollector") then
+				child.Enabled = occupied
+			elseif child:IsA("ProximityPrompt") then
+				child.Enabled = occupied
+			end
+		end
+	end
+
 	local function setupProximityPrompt(plot)
 		local ui = plot:FindFirstChild("UI")
 		local ratioSign = ui and ui:FindFirstChild("RatioSign")
@@ -129,6 +148,7 @@ function Service.start()
 		proximityPrompt.RequiresLineOfSight = false
 		proximityPrompt.KeyboardKeyCode = Enum.KeyCode.E
 		proximityPrompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+		proximityPrompt.Enabled = plotOccupied(plot)
 
 		if promptConnections[proximityPrompt] then
 			return proximityPrompt
@@ -145,8 +165,8 @@ function Service.start()
 			return
 		end
 		local cityId = plot:GetAttribute("CityId")
-		if not cityId or cityId == "Empty" or cityId == "" then
-			AlertClientEvent:FireClient(player, "Error", "This plot is unoccupied!")
+		if not plotOccupied(plot) then
+			AlertClientEvent:FireClient(player, "UnoccupiedPlot", "This plot is unoccupied.")
 			return
 		end
 
@@ -195,8 +215,9 @@ function Service.start()
 			AlertClientEvent:FireClient(player, "Already Liked", "You've already liked this city!")
 			return
 		end
-		AlertClientEvent:FireClient(player, "Success", "Like added! Total: " .. record.likes)
 		local owner = Players:GetPlayerByUserId(tonumber(cityId))
+		local ownerName = if owner then owner.DisplayName else tostring(cityId)
+		AlertClientEvent:FireClient(player, "LikeConfirmed", "Liked " .. ownerName .. "'s city")
 		if owner and owner ~= player and require(script.Parent.Parent.security.RequestGuard).ready(owner) then
 			AlertClientEvent:FireClient(owner, "New Like!", player.Name .. " liked your city!")
 		end
@@ -208,10 +229,15 @@ function Service.start()
 		end
 		initialized[plot] = true
 		setupProximityPrompt(plot)
+		updateLikeUIOccupancy(plot)
 		plot.DescendantAdded:Connect(function(child)
-			if child.Name == "UI" or child.Name == "RatioSign" or child.Name == "ProximityPrompt" then
+			if child.Name == "UI" or child.Name == "RatioSign" or child:IsA("ProximityPrompt") or child:IsA("LayerCollector") then
 				setupProximityPrompt(plot)
+				updateLikeUIOccupancy(plot)
 			end
+		end)
+		plot:GetAttributeChangedSignal("Assigned"):Connect(function()
+			updateLikeUIOccupancy(plot)
 		end)
 
 		local cityId = plot:GetAttribute("CityId")
@@ -225,6 +251,7 @@ function Service.start()
 		end
 
 		plot:GetAttributeChangedSignal("CityId"):Connect(function()
+			updateLikeUIOccupancy(plot)
 			local newCityId = plot:GetAttribute("CityId")
 			if newCityId and newCityId ~= "Empty" then
 				local likes = getLikesData(newCityId)

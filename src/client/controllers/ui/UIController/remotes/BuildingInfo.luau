@@ -8,7 +8,6 @@ return function(Context)
 	local Icon = Context.Icon
 	local player = Context.player
 	local questEvents = Context.questEvents
-	local BuildingViewport = Context.BuildingViewport
 
 	function Context.connectBuildingInfo()
 		-- Enhanced client-side building UI handler
@@ -39,7 +38,11 @@ return function(Context)
 
 					local imageElement = frameElement.NoData:FindFirstChild("BuildingImage")
 					if imageElement and imageElement:IsA("ImageLabel") then
-						BuildingViewport.attach(imageElement, building:GetAttribute("BuildingType") or building.Name)
+						if buildingData.ImageId and buildingData.ImageId ~= 0 then
+							imageElement.Image = "rbxassetid://" .. tostring(buildingData.ImageId)
+						else
+							imageElement.Image = ""
+						end
 					end
 
 					frameElement.NoData.Visible = true
@@ -60,7 +63,11 @@ return function(Context)
 
 				local imageElement = DataDisplay:FindFirstChild("BuildingImage")
 				if imageElement and imageElement:IsA("ImageLabel") then
-					BuildingViewport.attach(imageElement, building:GetAttribute("BuildingType") or building.Name)
+					if buildingData.ImageId and buildingData.ImageId ~= 0 then
+						imageElement.Image = "rbxassetid://" .. tostring(buildingData.ImageId)
+					else
+						imageElement.Image = ""
+					end
 				end
 
 				-- Income display
@@ -100,6 +107,8 @@ return function(Context)
 						rarityElement.TextColor3 = Color3.fromRGB(255, 170, 0) -- Orange
 					elseif rarity == "Mythic" then
 						rarityElement.TextColor3 = Color3.fromRGB(255, 85, 255) -- Pink/Magenta
+					elseif rarity == "Luxury" then
+						rarityElement.TextColor3 = Color3.fromRGB(125, 225, 235)
 					else
 						-- Default to common if rarity not found
 						rarityElement.TextColor3 = Color3.fromRGB(212, 212, 212)

@@ -6,6 +6,8 @@ local SoundService = game:GetService("SoundService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RarityColors = require(ReplicatedStorage.shared.ui.RarityColors)
+local TutorialConfig = require(script.Parent.Parent.Parent.config.TutorialConfig)
 
 local RareAttach =
 	game:GetService("ReplicatedStorage"):WaitForChild("Assets"):WaitForChild("Items"):WaitForChild("RareVFX")
@@ -183,38 +185,105 @@ function VFX.PlayFirstLegendaryEffect(building, position, buildingName, playerNa
 	end
 end
 
-function VFX.CheckAndPlayRarityEffect(player, building, rarity)
-	if not player or not building then
-		return false
-	end
+-- Epic has no authored VFX asset, and Mythic/Luxury have none either. Reuse the
+-- closest existing template, but recolor only the clone for this celebration.
+local HIGH_RARITIES = {
+	Rare = { flag = "FirstRare", template = RareAttach, sound = "RareBuilding" },
+	Epic = { flag = "FirstEpic", template = RareAttach, sound = "RareBuilding" },
+	Legendary = { flag = "FirstLegendary", template = LegendaryAttach, sound = "LegendaryBuilding" },
+	Mythic = { flag = "FirstMythic", template = LegendaryAttach, sound = "LegendaryBuilding" },
+	Luxury = { flag = "FirstLuxury", template = LegendaryAttach, sound = "LegendaryBuilding" },
+}
+local celebratedBuildings = setmetatable({}, { __mode = "k" })
+local activeLighting = {}
+local nextLightingId = 0
 
-	local playerInfo = player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayerInfo")
-	if not playerInfo then
-		return false
+local function recolorEffect(clone, color)
+	for _, item in clone:GetDescendants() do
+		if item:IsA("ParticleEmitter") or item:IsA("Beam") or item:IsA("Trail") then
+			item.Color = ColorSequence.new(color)
+		elseif item:IsA("PointLight") or item:IsA("SpotLight") or item:IsA("SurfaceLight") then
+			item.Color = color
+		elseif item:IsA("Highlight") then
+			item.FillColor = color
+			item.OutlineColor = color
+		end
 	end
+end
 
+local function refreshLighting()
+	local newest
+	for _, entry in activeLighting do
+		if not newest or entry.id > newest.id then newest = entry end
+	end
+	if newest then
+		local settings = newest.settings
+		tweenLighting({ CloudCover = settings.CloudCover, CloudDensity = settings.CloudDensity, TintColor = newest.color }, settings.SkyTransitionTime)
+	else
+		tweenLighting(ORIGINAL_LIGHTING, 1.5)
+	end
+end
+
+local function playRarityCelebration(player, building, rarity, definition, ownerReplay)
+	local color = RarityColors[rarity]
+	local settings = RARITY_SETTINGS[if rarity == "Rare" or rarity == "Epic" then "Rare" else "Legendary"]
 	local position = building.PrimaryPart and building.PrimaryPart.Position or building.Position
 	local buildingName = building:GetAttribute("BuildingType") or building.Name
+	local clone = definition.template:Clone()
+	recolorEffect(clone, color)
+	if clone:IsA("Model") then
+		clone:PivotTo(CFrame.new(position))
+	else
+		clone.CFrame = CFrame.new(position)
+	end
+	clone.Parent = workspace:WaitForChild("Misc"):WaitForChild("Effects")
 
-	if rarity == "Rare" then
-		local firstRare = playerInfo:FindFirstChild("FirstRare")
-
-		if firstRare.Value == false then
-			firstRare.Value = true
-			VFX.PlayFirstRareEffect(building, position, buildingName, player.Name)
-			return true
-		end
-	elseif rarity == "Legendary" then
-		local firstLegendary = playerInfo:FindFirstChild("FirstLegendary")
-
-		if firstLegendary.Value == false then
-			firstLegendary.Value = true
-			VFX.PlayFirstLegendaryEffect(building, position, buildingName, player.Name)
-			return true
+	nextLightingId += 1
+	local lightingId = nextLightingId
+	activeLighting[lightingId] = { id = lightingId, color = color, settings = settings }
+	refreshLighting()
+	task.wait(0.5)
+	shakeAllCameras(settings.ShakeIntensity, settings.ShakeDuration)
+	for _, item in clone:GetDescendants() do
+		if item:IsA("ParticleEmitter") then item.Enabled = true end
+	end
+	local orb = clone:FindFirstChild("Orb", true)
+	if orb and orb:IsA("Sound") then orb:Play() end
+	local sfx = SoundService:FindFirstChild("SFX")
+	local sound = sfx and sfx:FindFirstChild(definition.sound)
+	if sound then sound:Play() end
+	local announceEvent = ReplicatedStorage.Events.Notifications:FindFirstChild("RarityAnnounce")
+	if announceEvent then
+		for _, audience in Players:GetPlayers() do
+			announceEvent:FireClient(audience, rarity, buildingName, player.Name, ownerReplay)
 		end
 	end
+	task.wait(settings.ShakeDuration)
+	for _, item in clone:GetDescendants() do
+		if item:IsA("ParticleEmitter") then item.Enabled = false end
+	end
+	activeLighting[lightingId] = nil
+	refreshLighting()
+	task.wait(3)
+	clone:Destroy()
+end
 
-	return false
+function VFX.CheckAndPlayRarityEffect(player, building, rarity)
+	local definition = HIGH_RARITIES[rarity]
+	if not player or not building or not definition or celebratedBuildings[building] then return false end
+	local playerInfo = player:FindFirstChild("Data") and player.Data:FindFirstChild("PlayerInfo")
+	if not playerInfo then return false end
+	local milestone = playerInfo:FindFirstChild(definition.flag)
+	local ownerReplay = player.UserId == TutorialConfig.OwnerUserId
+	if not ownerReplay and (not milestone or milestone.Value) then return false end
+	-- Claim before any yield so a timer/skip race cannot produce a second celebration.
+	celebratedBuildings[building] = true
+	if milestone then milestone.Value = true end
+	task.spawn(function()
+		local success, err = pcall(playRarityCelebration, player, building, rarity, definition, ownerReplay)
+		if not success then warn("[VFX] Rarity celebration failed:", err) end
+	end)
+	return true
 end
 
 return VFX

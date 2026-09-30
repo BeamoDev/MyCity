@@ -54,8 +54,9 @@ return function(Context)
 		IncomeSystem.clearPlotOwnership(player)
 		playerFriendBoosts[player.UserId] = nil
 
+		local prefix = tostring(player.UserId) .. "_"
 		for key, _ in pairs(buttonDebounces) do
-			if string.find(key, tostring(player.UserId)) then
+			if key:sub(1, #prefix) == prefix then
 				buttonDebounces[key] = nil
 			end
 		end

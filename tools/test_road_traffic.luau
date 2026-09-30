@@ -4,8 +4,21 @@ local function load(path, env)
 end
 local env = { Vector3 = r.Vector3, CFrame = r.CFrame, Instance = r.Instance, Enum = r.Enum }
 local Graph = load("src/server/systems/world/RoadTraffic/Graph.luau", env)
+local Density = load("src/server/systems/world/RoadTraffic/Density.luau")
 local Trip = load("src/shared/visuals/AmbientTrip.luau", {})
 local V, C = r.Vector3.new, r.CFrame.new
+
+assert(Density.desired(0, 100, 100000, 12) == 0, "Cars spawned without a usable road network")
+assert(Density.desired(4, 0, 0, 12) == 1)
+assert(Density.desired(12, 16, 3600, 12) > Density.desired(12, 0, 0, 12), "City growth did not raise car demand")
+assert(Density.desired(100, 100, 1000000, 12) == 12, "Per-city car cap failed")
+local densityBudgets = Density.allocate({ 12, 12, 12, 12, 12, 12, 12, 12 }, 72, 12)
+local densityTotal, densityLow, densityHigh = 0, math.huge, 0
+for _, count in densityBudgets do
+	densityTotal += count
+	densityLow, densityHigh = math.min(densityLow, count), math.max(densityHigh, count)
+end
+assert(densityTotal == 72 and densityHigh - densityLow <= 1, "Global car budget is not fairly allocated")
 
 local function child(parent, class, name)
 	local v = r.Instance.new(class)

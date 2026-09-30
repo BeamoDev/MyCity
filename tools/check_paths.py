@@ -53,11 +53,9 @@ for path in files:
         key = tuple(target)
         if key in module_paths:
             checked += 1
-        elif key[:2] == ("ReplicatedStorage", "TopbarPlus"):
-            external.add(".".join(key))
         else:
             failures.append(f"{path.relative_to(ROOT)}:{source[:m.start()].count(chr(10)) + 1}: missing ModuleScript {'.'.join(key)}")
-    for stale in ("ReplicatedStorage.Client", "Workspace.Map.Plots", "workspace.Map.Plots", "Workspace.Map:WaitForChild(\"Plots\")", "ReplicatedStorage.Assets.Buildings", "NotificationsFrame", "Events.BuilderLimitReached",
+    for stale in ("ReplicatedStorage.Client", "Workspace.Map.Plots", "workspace.Map.Plots", "Workspace.Map:WaitForChild(\"Plots\")", "ReplicatedStorage.Assets.Buildings", "NotificationsFrame", "Events.BuilderLimitReached", "ReplicatedStorage:WaitForChild(\"TopbarPlus\")",
                   "ReplicatedStorage.Expansion", "ReplicatedStorage.Modules.UIEffects"):
         if stale in source:
             failures.append(f"{path.relative_to(ROOT)}: stale path {stale}")

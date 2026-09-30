@@ -2,6 +2,7 @@
 -- stationary, so cosmetic flight never creates server replication or affects saving.
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
+local LocalPlayer = game:GetService("Players").LocalPlayer
 
 local Controller = {}
 local BUILDING_TYPE = "MilitaryBase"
@@ -15,6 +16,7 @@ local DEFAULT_BLADE_SPEED = math.rad(900)
 local DEFAULT_YAW = math.rad(90)
 
 local started = false
+local readyConnection
 local elapsed = 0
 local entries = {}
 local connections = {}
@@ -241,6 +243,18 @@ function Controller.start()
 	if started then
 		return
 	end
+	if LocalPlayer and LocalPlayer:GetAttribute("MyCityLoaded") ~= true then
+		if not readyConnection then
+			readyConnection = LocalPlayer:GetAttributeChangedSignal("MyCityLoaded"):Connect(function()
+				if LocalPlayer:GetAttribute("MyCityLoaded") == true then
+					readyConnection:Disconnect()
+					readyConnection = nil
+					Controller.start()
+				end
+			end)
+		end
+		return
+	end
 	started = true
 	local parent = Workspace:FindFirstChild("Misc") or Workspace
 	animationFolder = parent:FindFirstChild("BuildingAnimations")
@@ -272,6 +286,10 @@ function Controller.start()
 end
 
 function Controller.stop()
+	if readyConnection then
+		readyConnection:Disconnect()
+		readyConnection = nil
+	end
 	if not started then
 		return
 	end

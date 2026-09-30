@@ -25,6 +25,7 @@ function ConstructionSystem.syncPlayer(player)
 	ConstructionBuilder.updateBuilderCount(player, activeBuilders)
 end
 ConstructionSystem.getActiveBuilders = ConstructionBuilder.getActiveBuilders
+ConstructionSystem.ConstructionBuilder = ConstructionBuilder
 ConstructionSystem.skipConstruction = ConstructionSkipping.skipConstruction
 ConstructionSystem.finishConstruction = ConstructionTimer.finishConstruction
 ConstructionSystem.startConstructionTimer = ConstructionTimer.startConstructionTimer
@@ -65,7 +66,10 @@ local function createConstruction(
 
 	if not isInTutorial then
 		if currentBuilders >= maxBuilders then
-			ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player)
+			ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(
+				player,
+				not ConstructionBuilder.ownsBuilderGamePass(player)
+			)
 			return false
 		end
 	end
@@ -202,7 +206,12 @@ function ConstructionSystem.init()
 		while true do
 			task.wait(1)
 			for _, player in pairs(Players:GetPlayers()) do
-				ConstructionBuilder.updateBuilderCount(player, activeBuilders)
+				if
+					player:GetAttribute("MyCityLoaded") == true
+					and player:GetAttribute("MyCityBuilderUIReady") == true
+				then
+					ConstructionBuilder.updateBuilderCount(player, activeBuilders)
+				end
 			end
 		end
 	end)

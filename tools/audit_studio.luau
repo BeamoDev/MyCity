@@ -99,7 +99,7 @@ local required = {
 	{ "ReplicatedStorage.Assets.IncomeBoostTemp", "GuiObject" },
 	{ "ReplicatedStorage.Assets.PopulationBoostTemp", "GuiObject" },
 	{ "ReplicatedStorage.Assets.BuildingTemp", "GuiObject" },
-	{ "ReplicatedStorage.TopbarPlus.Icon", "ModuleScript" },
+	{ "ClientRoot.Satchel.Satchel.Packages.topbarplus", "ModuleScript" },
 	{ "ReplicatedStorage.Assets.Highlight", "Highlight" },
 	{ "ServerStorage.Buildings" },
 	{ "Workspace.Map.Interactives.BuyArea.Model.Prompt.ShopPrompt", "ProximityPrompt" },

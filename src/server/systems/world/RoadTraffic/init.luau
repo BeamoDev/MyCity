@@ -4,15 +4,16 @@
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local Graph = require(script.Graph)
+local Density = require(script.Density)
 
 local RoadTraffic = {}
 local Config = {
 	Templates = "CarTemplates",
 	Speed = 8 / 3, -- studs per second (3x slower than the original 8)
-	PiecesPerCar = 3, -- one car per this many road pieces in a city
-	MaxPerCity = 6,
-	GlobalLimit = 30,
+	MaxPerCity = 12,
+	GlobalLimit = 72,
 	MaxPieces = 12, -- pieces driven per trip before the car leaves
 	Interval = 1, -- seconds between city updates
 	VisitChance = 0.5, -- share of highway cars that turn into a connected city
@@ -92,6 +93,38 @@ local function roadsOf(plot)
 	return roads
 end
 
+local function populationOf(plot)
+	local cityId = tonumber(plot:GetAttribute("CityId"))
+	local player = cityId and Players:GetPlayerByUserId(cityId)
+	local data = player and player:FindFirstChild("Data")
+	local info = data and data:FindFirstChild("PlayerInfo")
+	local population = info and info:FindFirstChild("Population")
+	return if population and type(population.Value) == "number" then population.Value else 0
+end
+
+local function readyForAmbient(plot)
+	local cityId = tonumber(plot:GetAttribute("CityId"))
+	local player = cityId and Players:GetPlayerByUserId(cityId)
+	return player ~= nil and player:GetAttribute("MyCityLoaded") == true
+		and not player:GetAttribute("MyCityLeaving")
+end
+
+local function developmentOf(plot, city)
+	if city.developmentDirty then
+		city.developmentDirty = false
+		local buildings = plot:FindFirstChild("Buildings")
+		local placed = buildings and buildings:FindFirstChild("Placed")
+		local count = 0
+		for _, model in (if placed then placed:GetChildren() else {}) do
+			if model:IsA("Model") and not Graph.isRoad(model) then
+				count += 1
+			end
+		end
+		city.buildings = count
+	end
+	return Density.desired(#city.pieces, city.buildings, populationOf(plot), Config.MaxPerCity)
+end
+
 local function spawnCar(plot, city)
 	local template = templates[math.random(1, #templates)]
 	local points = Graph.plan(city.pieces, math.random, Config.MaxPieces)
@@ -126,7 +159,7 @@ local function spawnCar(plot, city)
 	total += 1
 end
 
-local function update(plot, city)
+local function refresh(plot, city)
 	if city.dirty then
 		city.dirty = false
 		-- Roads changed: current trips may cross removed pieces, so replan from scratch.
@@ -140,23 +173,17 @@ local function update(plot, city)
 			retire(city, index)
 		end
 	end
-	local target = math.min(Config.MaxPerCity, math.floor(#city.pieces / Config.PiecesPerCar))
-	if #city.pieces >= 2 and #city.cars < target and total < Config.GlobalLimit then
-		local ok, err = pcall(spawnCar, plot, city)
-		if not ok then
-			warn("[RoadTraffic] Spawn failed:", err)
-		end
-	end
 end
 
 local function watch(plot)
 	if cities[plot] then
 		return
 	end
-	local city = { dirty = true, pieces = {}, cars = {} }
+	local city = { dirty = true, developmentDirty = true, buildings = 0, pieces = {}, cars = {} }
 	cities[plot] = city
 	local function bind(placed)
 		local function changed(model)
+			city.developmentDirty = true
 			if Graph.isRoad(model) then
 				city.dirty = true
 			end
@@ -210,12 +237,39 @@ function RoadTraffic.init()
 			return
 		end
 		elapsed = 0
+		local active, desired = {}, {}
 		for plot, city in cities do
 			if plot.Parent then
-				update(plot, city)
+				table.insert(active, { plot = plot, city = city })
+				if readyForAmbient(plot) then
+					refresh(plot, city)
+					table.insert(desired, developmentOf(plot, city))
+				else
+					-- Build the graph only once the authoritative city is ready.
+					city.dirty, city.developmentDirty = true, true
+					table.insert(desired, 0)
+				end
 			else
 				clear(city)
 				cities[plot] = nil
+			end
+		end
+		local targets = Density.allocate(desired, Config.GlobalLimit, Config.MaxPerCity)
+		-- Retire globally before adding work, then grow gradually across cities.
+		for index, entry in active do
+			local city = entry.city
+			for carIndex = #city.cars, targets[index] + 1, -1 do
+				retire(city, carIndex)
+			end
+			entry.plot:SetAttribute("AmbientCarTarget", targets[index])
+		end
+		for index, entry in active do
+			local city = entry.city
+			if #city.cars < targets[index] and total < Config.GlobalLimit then
+				local ok, err = pcall(spawnCar, entry.plot, city)
+				if not ok then
+					warn("[RoadTraffic] Spawn failed:", err)
+				end
 			end
 		end
 	end)

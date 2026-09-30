@@ -15,6 +15,23 @@ local activeBuilders = {}
 local function ownsBuilderGamePass(player)
 	return Ownership.has(player, BUILDER_GAMEPASS_ID)
 end
+ConstructionBuilder.ownsBuilderGamePass = ownsBuilderGamePass
+
+local function publishBuilderCount(player, current, maximum)
+	-- RemoteEvents queue invocations until a client listener exists. Builder counts
+	-- are refreshed once ClientReady arrives, so sending the one-second snapshots
+	-- before that point only grows an obsolete queue and can exhaust it on slow joins.
+	if player:GetAttribute("MyCityBuilderUIReady") == true then
+		UpdateBuilderUIEvent:FireClient(player, current, maximum)
+	end
+end
+
+function ConstructionBuilder.publishBuilderCount(player, current, maximum)
+	if not player or not player.Parent then
+		return
+	end
+	publishBuilderCount(player, current, maximum or ConstructionBuilder.getMaxBuilders(player))
+end
 
 function ConstructionBuilder.getMaxBuilders(player)
 	return ownsBuilderGamePass(player) and (MAX_BUILDERS + 1) or MAX_BUILDERS
@@ -36,28 +53,28 @@ function ConstructionBuilder.updateBuilderCount(player, activeBuildersRef)
 
 	if not plotData or plotData.Value == 0 then
 		activeBuildersRef[player.UserId] = 0
-		UpdateBuilderUIEvent:FireClient(player, 0, ConstructionBuilder.getMaxBuilders(player))
+		publishBuilderCount(player, 0, ConstructionBuilder.getMaxBuilders(player))
 		return
 	end
 
 	local plot = plotsFolder:FindFirstChild("Plot" .. plotData.Value)
 	if not plot then
 		activeBuildersRef[player.UserId] = 0
-		UpdateBuilderUIEvent:FireClient(player, 0, ConstructionBuilder.getMaxBuilders(player))
+		publishBuilderCount(player, 0, ConstructionBuilder.getMaxBuilders(player))
 		return
 	end
 
 	local buildingsFolder = plot:FindFirstChild("Buildings")
 	if not buildingsFolder then
 		activeBuildersRef[player.UserId] = 0
-		UpdateBuilderUIEvent:FireClient(player, 0, ConstructionBuilder.getMaxBuilders(player))
+		publishBuilderCount(player, 0, ConstructionBuilder.getMaxBuilders(player))
 		return
 	end
 
 	local constructionFolder = buildingsFolder:FindFirstChild("Construction")
 	if not constructionFolder then
 		activeBuildersRef[player.UserId] = 0
-		UpdateBuilderUIEvent:FireClient(player, 0, ConstructionBuilder.getMaxBuilders(player))
+		publishBuilderCount(player, 0, ConstructionBuilder.getMaxBuilders(player))
 		return
 	end
 
@@ -69,7 +86,7 @@ function ConstructionBuilder.updateBuilderCount(player, activeBuildersRef)
 	end
 
 	activeBuildersRef[player.UserId] = count
-	UpdateBuilderUIEvent:FireClient(player, count, ConstructionBuilder.getMaxBuilders(player))
+	publishBuilderCount(player, count, ConstructionBuilder.getMaxBuilders(player))
 end
 
 function ConstructionBuilder.init(activeBuildersRef, builderGamepassId, maxBuilders)

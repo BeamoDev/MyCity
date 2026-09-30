@@ -122,11 +122,16 @@ return function(Context)
 
 		local sizeX, sizeZ = base.Size.X, base.Size.Z
 		local isOddSized = (math.floor(sizeX) % 2 == 1) or (math.floor(sizeZ) % 2 == 1)
-		local needsOffset = isOddSized or tool.Name == "Airport" or tool.Name == "Stadium"
+		local needsOffset = isOddSized or tool.Name == "MilitaryBase" or tool.Name == "Stadium"
 
 		local gridOffsetX, gridOffsetZ = 0, 0
 		if needsOffset then
 			gridOffsetX, gridOffsetZ = 0.5, 0.5
+		end
+		if tool.Name == "Airport" then
+			-- Its authored Base is 8 by 13.5: only the long axis needs the half-grid shift.
+			local quarterTurn = math.round(state.rotationAngle / 90) % 2
+			gridOffsetX, gridOffsetZ = if quarterTurn == 1 then 0.5 else 0, if quarterTurn == 1 then 0 else 0.5
 		end
 
 		local x = math.floor((position.X - gridOffsetX) / GRID_SIZE + 0.5) * GRID_SIZE + gridOffsetX

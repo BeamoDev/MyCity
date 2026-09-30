@@ -23,6 +23,12 @@ local function getPlot(player)
 	local plot = plots and number and plots:FindFirstChild("Plot" .. number.Value)
 	return if plot and tostring(plot:GetAttribute("CityId")) == tostring(player.UserId) then plot else nil
 end
+local function populationOf(player)
+	local data = player:FindFirstChild("Data")
+	local info = data and data:FindFirstChild("PlayerInfo")
+	local population = info and info:FindFirstChild("Population")
+	return if population and type(population.Value) == "number" then population.Value else 0
+end
 function System.cleanupPlayer(player)
 	local city = cities[player]
 	if not city then
@@ -94,7 +100,11 @@ local function sync()
 			city.dirty, city.refreshAt = false, os.clock() + 10
 		end
 		table.insert(active, city)
-		table.insert(counts, Config.desired(city.geometry.count))
+		table.insert(counts, Config.desired(
+			city.geometry.buildingCount or city.geometry.count,
+			city.geometry.roadCount or 0,
+			populationOf(player)
+		))
 	end
 	local budgets = Config.allocate(counts)
 	-- Remove excess across ALL cities before admitting new NPCs under the global cap.

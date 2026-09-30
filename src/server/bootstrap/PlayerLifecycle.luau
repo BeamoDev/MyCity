@@ -1,11 +1,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Guard = require(script.Parent.Parent.systems.security.RequestGuard)
 local Rewards = require(script.Parent.Parent.systems.progression.PlayerRewards)
 local RestoreBudget = require(script.Parent.Parent.services.RestoreBudget)
 local Shutdown = require(script.Parent.Shutdown)
 local Lifecycle = {}
 local started = false
+local PROFILE_JOINS = RunService.IsStudio and RunService:IsStudio() or false
 
 function Lifecycle.start(systems)
 	if started or Shutdown.isClosing() then
@@ -22,10 +24,19 @@ function Lifecycle.start(systems)
 		loading[player] = true
 		player:SetAttribute("JoinTime", tick())
 		player:SetAttribute("MyCityLoaded", false)
+		player:SetAttribute("MyCityBuilderUIReady", false)
 		player:SetAttribute("MyCityLoadFailed", false)
 		player:SetAttribute("MyCityLoadErrorCode", nil)
 		local stage = "Profile"
+		local profileStarted = if PROFILE_JOINS then os.clock() else nil
+		local stageStarted = profileStarted
+		local phaseTimes = if PROFILE_JOINS then {} else nil
 		local function setStage(value)
+			if phaseTimes then
+				local now = os.clock()
+				table.insert(phaseTimes, string.format("%s=%.1fms", stage, (now - stageStarted) * 1000))
+				stageStarted = now
+			end
 			stage = value
 			player:SetAttribute("MyCityLoadStage", value)
 		end
@@ -121,6 +132,18 @@ function Lifecycle.start(systems)
 				end
 			end)
 		end, debug.traceback)
+		if phaseTimes then
+			local total = (os.clock() - profileStarted) * 1000
+			print(
+				string.format(
+					"[JoinProfile] %d %s total=%.1fms %s",
+					player.UserId,
+					if ok and stage == "Ready" then "ready" else "aborted",
+					total,
+					table.concat(phaseTimes, " ")
+				)
+			)
+		end
 		if not ok then
 			player:SetAttribute("MyCityLoaded", false)
 			player:SetAttribute("MyCityInventoryReady", false)
@@ -207,6 +230,9 @@ function Lifecycle.start(systems)
 	end
 
 	ReplicatedStorage.Events.Loading.ClientReady.OnServerEvent:Connect(function(player)
+		-- Builder snapshots begin only after UIController has bound UpdateBuilderUI.
+		-- The sync below immediately sends the latest authoritative count.
+		player:SetAttribute("MyCityBuilderUIReady", true)
 		-- Let readiness snapshots take the guard before the yielding reward save.
 		task.defer(Rewards.giveGroupReward, player)
 		Guard.run(player, "ClientReady", function()

@@ -23,6 +23,12 @@ return function(Context)
 	end
 
 	function Context.getStockForBuilding(buildingName, info, misses)
+		if info.ShopStockMin and info.ShopStockMax then
+			if math.random() < (info.ShopOutOfStockChance or 0) then
+				return 0
+			end
+			return math.random(info.ShopStockMin, info.ShopStockMax)
+		end
 		-- Every Epic follows the same rule, including names in the limited list.
 		if info.Rarity == "Epic" then
 			local range = STOCK_RANGES.Epic

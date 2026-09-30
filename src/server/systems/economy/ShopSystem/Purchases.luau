@@ -65,6 +65,23 @@ return function(Context)
 		if not item then
 			return
 		end
+		local storage = Context.ServerStorage
+		if storage then
+			local models = storage:FindFirstChild("Buildings")
+			local template = models and models:FindFirstChild(buildingName)
+			local definition = Context.getBuildingConfig()[buildingName]
+			local assets = ReplicatedStorage:FindFirstChild("Assets")
+			local sites = assets and assets:FindFirstChild("Constructions")
+			local site = definition and sites and sites:FindFirstChild(definition.Size)
+			if not definition or not (template and template:IsA("Model") and template.PrimaryPart)
+				or (definition and (definition.BuildTime or 0) > 0 and not (site and site:IsA("Model")))
+			then
+				ReplicatedStorage.Events.Notifications.ErrorEvent:FireClient(
+					player, "This building is temporarily unavailable. Please try again later."
+				)
+				return false
+			end
+		end
 
 		local playerRebirths, playerPopulation = Context.getPlayerStats(player)
 

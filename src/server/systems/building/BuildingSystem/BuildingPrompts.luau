@@ -10,6 +10,32 @@ local CRIME_INCOME_PENALTY = 0.02
 local BASE_CRIME_RATE = 15
 local BASE_HAPPINESS = 75
 local MAX_LEVEL = 99
+local INFO_Y_OFFSETS = { BurjKhalifa = -10, LuxurySkyscraper = -4 }
+
+local function promptAnchor(building, buildingName)
+	local hitbox = building.Hitbox
+	local yOffset = INFO_Y_OFFSETS[buildingName]
+	if not yOffset then return hitbox end
+	local anchor = building:FindFirstChild("InfoAnchor")
+	if anchor then return anchor end
+
+	-- Keep the hitbox and placement bounds unchanged; only the interaction point moves.
+	anchor = Instance.new("Part")
+	anchor.Name = "InfoAnchor"
+	anchor.Size = Vector3.new(0.1, 0.1, 0.1)
+	anchor.CFrame = hitbox.CFrame * CFrame.new(0, yOffset, 0)
+	anchor.Transparency = 1
+	anchor.Anchored = false
+	anchor.CanCollide = false
+	anchor.CanTouch = false
+	anchor.CanQuery = false
+	anchor.Massless = true
+	anchor.Parent = building
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0, weld.Part1 = hitbox, anchor
+	weld.Parent = anchor
+	return anchor
+end
 
 function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 	local BuildingConfig =
@@ -20,10 +46,11 @@ function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 		:WaitForChild("Items")
 		:WaitForChild("CollectPrompt")
 		:Clone()
-	CollectPrompt.Parent = building.Hitbox
+	local interactionAnchor = promptAnchor(building, buildingName)
+	CollectPrompt.Parent = interactionAnchor
 
 	local NewString = Instance.new("StringValue")
-	NewString.Parent = building.Hitbox
+	NewString.Parent = interactionAnchor
 	NewString.Name = "PromptVal"
 	NewString.Value = "Building"
 
@@ -44,6 +71,10 @@ function BuildingPrompts.addBuildingPrompts(building, player, buildingName)
 		:WaitForChild("BuildingInfo")
 		:Clone()
 	BuildingInfo.Parent = building.Hitbox
+	local infoYOffset = INFO_Y_OFFSETS[buildingName]
+	if infoYOffset and BuildingInfo:IsA("BillboardGui") then
+		BuildingInfo.StudsOffsetWorldSpace += Vector3.new(0, infoYOffset, 0)
+	end
 
 	local config = BuildingConfig[buildingName]
 	if not config then

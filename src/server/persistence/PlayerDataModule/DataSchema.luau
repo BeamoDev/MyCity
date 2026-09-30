@@ -1,5 +1,5 @@
 -- Code-owned defaults. Existing saves retain their values and dynamic collections.
-local Schema = { Version = 5 }
+local Schema = { Version = 6 }
 local function value(className, initial)
 	return { ClassName = className, Value = initial }
 end
@@ -25,12 +25,16 @@ function Schema.CreateDefault(playerName, now)
 			PlayerInfo = {
 				Population = number(0),
 				CityName = value("StringValue", playerName .. "'s City!"),
+				CityNameFiltered = flag(false),
 				AvailableIncome = number(0),
 				LastUpdate = number(now),
 				LastShopReset = number(now),
 				LastPlot = number(0),
 				FirstRare = flag(false),
+				FirstEpic = flag(false),
 				FirstLegendary = flag(false),
+				FirstMythic = flag(false),
+				FirstLuxury = flag(false),
 				GroupRewardClaimed = flag(false),
 				LimitedPrompted = flag(false),
 				ProgressionFunnelVersion = number(0),

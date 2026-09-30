@@ -4,6 +4,23 @@ local r = require("@lune/roblox")
 local function load(path, env)
 	return luau.load(fs.readFile(path), { environment = env or {} })()
 end
+local lifecycleSource = fs.readFile("src/server/bootstrap/PlayerLifecycle.luau")
+local assignmentSource = fs.readFile("src/server/systems/world/PlotManager/Assignment.luau")
+local plotLifecycleSource = fs.readFile("src/server/systems/world/PlotManager/Lifecycle.luau")
+local scenerySource = fs.readFile("src/server/systems/world/PlotManager/Scenery.luau")
+local resetSource = fs.readFile("src/server/systems/world/PlotManager/Reset.luau")
+local roadSource = fs.readFile("src/server/systems/world/RoadTraffic/init.luau")
+local airportSource = fs.readFile("src/server/systems/world/AirportSystem.luau")
+assert(lifecycleSource:find("PROFILE_JOINS = RunService.IsStudio", 1, true))
+assert(lifecycleSource:find("[JoinProfile]", 1, true))
+assert(not assignmentSource:find("spawnAllScenery", 1, true), "Player assignment still rescans every plot")
+assert(plotLifecycleSource:find("task.spawn(Context.spawnAllScenery)", 1, true))
+assert(resetSource:find("task.spawn(Context.spawnSceneryForPlot, newplot)", 1, true))
+assert(scenerySource:find("RestoreBudget.checkpoint()", 1, true))
+assert(scenerySource:find("if plot.Parent ~= plotsFolder then return end", 1, true))
+assert(roadSource:find("readyForAmbient(plot)", 1, true))
+assert(airportSource:find("readyOwner(airport)", 1, true))
+assert(airportSource:find("task.defer(startForPlayer, player)", 1, true))
 local function node(values)
 	local obj = values or {}
 	function obj:FindFirstChild(name)
@@ -85,6 +102,7 @@ assert(frames == 100, "Slow work did not yield")
 player.MyCityLeaving = true
 assert(not pcall(budget.checkpoint, player), "Departure must stop restoration")
 player.MyCityLeaving = nil
+budget.checkpoint(nil) -- Cosmetic world work uses the same budget without owning a player.
 print("PASS: shared restoration budget across 600 operations, time budget and departure cancellation")
 
 -- Real BuildingData restores all saved metadata, prepares before publishing and performs no city income scans.

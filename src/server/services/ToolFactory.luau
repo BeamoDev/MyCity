@@ -24,6 +24,7 @@ function ToolFactory.create(buildingName, isCollected, level, xp, mutation)
 	local definition = BuildingConfig[buildingName]
 	local tool = Instance.new("Tool")
 	tool.Name = buildingName
+	tool:SetAttribute("DisplayName", definition.DisplayName or buildingName)
 	tool.ToolTip = "Equip to place " .. (definition.DisplayName or buildingName) .. "."
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false

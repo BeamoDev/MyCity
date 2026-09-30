@@ -31,18 +31,6 @@ return function(Context)
 			end
 		)
 
-		Context.connections:connect(
-			ReplicatedStorage.Events.CitySign.UpdateCityName.OnClientEvent,
-			function(success, filteredName)
-				if success and State.currentEditingPlot then
-					local citySign = State.currentEditingPlot.UI:FindFirstChild("CitySign")
-					if citySign and citySign:FindFirstChild("Body") and citySign.Body:FindFirstChild("SurfaceGui") then
-						citySign.Body.SurfaceGui.Frame.CityName.Text = filteredName
-					end
-				end
-			end
-		)
-
 		Context.connections:connect(ReplicatedStorage.Events.Notifications.PlaceSound.OnClientEvent, function()
 			game.SoundService.SFX.PlaceSound:Play()
 		end)

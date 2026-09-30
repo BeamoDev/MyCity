@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
 local AirportSystem = {}
 
@@ -45,6 +46,7 @@ local started = false
 local entries = {}
 local connections = {}
 local warned = {}
+local readyConnections = setmetatable({}, { __mode = "k" })
 
 local function warnOnce(key, message)
 	if warned[key] then
@@ -335,6 +337,16 @@ local function airportFor(item)
 	return nil
 end
 
+local function readyOwner(airport)
+	local placed = airport.Parent
+	local buildings = placed and placed.Parent
+	local plot = buildings and buildings.Parent
+	local cityId = plot and tonumber(plot:GetAttribute("CityId"))
+	local owner = cityId and Players:GetPlayerByUserId(cityId)
+	return owner and owner:GetAttribute("MyCityLoaded") == true
+		and not owner:GetAttribute("MyCityLeaving")
+end
+
 local function remove(airport)
 	local entry = entries[airport]
 	if not entry then
@@ -346,7 +358,7 @@ local function remove(airport)
 end
 
 local function add(airport)
-	if not airport or entries[airport] then
+	if not airport or entries[airport] or not readyOwner(airport) then
 		return
 	end
 	for _, item in airport:GetDescendants() do
@@ -375,6 +387,31 @@ local function add(airport)
 	task.spawn(run, entry)
 end
 
+local function startForPlayer(player)
+	if player:GetAttribute("MyCityLoaded") ~= true or player:GetAttribute("MyCityLeaving") then return end
+	local data = player:FindFirstChild("Data")
+	local info = data and data:FindFirstChild("PlotInfo")
+	local plotNumber = info and info:FindFirstChild("Plot")
+	local plots = Workspace:FindFirstChild("Plots")
+	local plot = plots and plotNumber and plots:FindFirstChild("Plot" .. plotNumber.Value)
+	if not plot or tostring(plot:GetAttribute("CityId")) ~= tostring(player.UserId) then return end
+	local buildings = plot:FindFirstChild("Buildings")
+	local placed = buildings and buildings:FindFirstChild("Placed")
+	if placed then
+		for _, model in placed:GetChildren() do
+			if model:GetAttribute("BuildingType") == "Airport" then add(model) end
+		end
+	end
+end
+
+local function watchPlayer(player)
+	if readyConnections[player] then return end
+	readyConnections[player] = player:GetAttributeChangedSignal("MyCityLoaded"):Connect(function()
+		if player:GetAttribute("MyCityLoaded") then task.defer(startForPlayer, player) end
+	end)
+	if player:GetAttribute("MyCityLoaded") then task.defer(startForPlayer, player) end
+end
+
 local function disableLegacyTemplateController()
 	local buildings = ServerStorage:FindFirstChild("Buildings")
 	local airport = buildings and buildings:FindFirstChild("Airport")
@@ -394,6 +431,13 @@ function AirportSystem.init()
 	end
 	started = true
 	disableLegacyTemplateController()
+	table.insert(connections, Players.PlayerAdded:Connect(watchPlayer))
+	for _, player in Players:GetPlayers() do watchPlayer(player) end
+	table.insert(connections, Players.PlayerRemoving:Connect(function(player)
+		local connection = readyConnections[player]
+		if connection then connection:Disconnect() end
+		readyConnections[player] = nil
+	end))
 	for _, item in Workspace:GetDescendants() do
 		add(airportFor(item))
 	end

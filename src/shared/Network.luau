@@ -35,7 +35,7 @@ local schema = {
 		PostTutorialQuest = events("UpdateQuest QuestComplete AllQuestsDone"),
 		StealBuilding = events("Stole Recieved"),
 		Weather = events("TimeUpdate UpdateUI"),
-		VFX = events("CameraShake"),
+		VFX = events("CameraShake RarityRise"),
 		Teleport = events("TeleportError"),
 		Tutorial = events(
 			"GiveBank ToolEquipped BankPlaced ConstructionComplete IncomeCollect ShackPurchased ShackPlaced ShopOpened RequestStart StartTutorial ShackConstructionStarted WaitToBuild DisplayPlace"

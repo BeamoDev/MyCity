@@ -46,7 +46,6 @@ return function(Context)
 		for buildingName, info in pairs(BuildingConfig) do
 			if info.RebirthRequired == nextRebirthLevel then
 				table.insert(unlockedBuildings, {
-					building = buildingName,
 					name = info.DisplayName or buildingName,
 					imageId = info.ImageId or 0,
 				})

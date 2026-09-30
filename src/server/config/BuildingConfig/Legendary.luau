@@ -105,15 +105,16 @@ return {
 		BuildLimit = 3,
 	},
 
+	-- Backward-compatible internal key used by existing Apex Tower saves and
+	-- Starter Pack receipts. Removing it prevents those cities from loading.
 	SkyscraperGeneric = {
-		DisplayName = "Grand Skyscraper",
+		DisplayName = "Apex Tower",
 		Description = "A landmark at the heart of the skyline",
 		Size = "4x4",
 		BuildTime = 900,
 		Cost = 1150000,
 		Income = 1050,
 		Population = 220,
-		-- ImageId: add the shop/inventory icon asset id here.
 		Rarity = "Legendary",
 		RebirthRequired = 0,
 		PopulationRequired = 125000,

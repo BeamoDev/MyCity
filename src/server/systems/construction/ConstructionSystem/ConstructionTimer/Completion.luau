@@ -3,6 +3,7 @@ return function(Context)
 	local State = Context.State
 	local ConstructionTimer = Context.ConstructionTimer
 	local TweenService = Context.TweenService
+	local ReplicatedStorage = Context.ReplicatedStorage
 	local BuildingCompleteEvent = Context.BuildingCompleteEvent
 
 	function ConstructionTimer.finishConstruction(
@@ -91,37 +92,18 @@ return function(Context)
 			local rarity = buildingConfig and buildingConfig.Rarity
 			local playedSpecialVFX = false
 
-			if rarity and (rarity == "Rare" or rarity == "Legendary") and not skipAnimation then
-				if player and player.Parent and player.Character then
-					playedSpecialVFX = VFX.CheckAndPlayRarityEffect(player, newBuilding, rarity)
-				end
+			if rarity and player and player.Parent then
+				playedSpecialVFX = VFX.CheckAndPlayRarityEffect(player, newBuilding, rarity)
+			end
+			if playedSpecialVFX then
+				ReplicatedStorage.Events.VFX.RarityRise:FireAllClients(plot.Name, newBuilding.Name, rarity, player.UserId)
 			end
 
 			if not skipAnimation then
 				if playedSpecialVFX then
-					local riseTime = rarity == "Legendary" and 5 or 4
-					local slowTweenInfo = TweenInfo.new(riseTime, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-					local tweenDistance = Context.calculateTweenDistance(size)
-
-					local siteTweenGoal = {
-						CFrame = constructionSite.PrimaryPart.CFrame - Vector3.new(0, tweenDistance * 2, 0),
-					}
-					local siteTween = TweenService:Create(constructionSite.PrimaryPart, slowTweenInfo, siteTweenGoal)
-
-					newBuilding:SetPrimaryPartCFrame(newBuilding.PrimaryPart.CFrame - Vector3.new(0, tweenDistance, 0))
-					local buildingTweenGoal = {
-						CFrame = newBuilding.PrimaryPart.CFrame + Vector3.new(0, tweenDistance, 0),
-					}
-					local buildingTween = TweenService:Create(newBuilding.PrimaryPart, slowTweenInfo, buildingTweenGoal)
-
-					siteTween:Play()
-					buildingTween:Play()
-
-					siteTween.Completed:Connect(function()
-						if constructionSite and constructionSite.Parent then
-							constructionSite:Destroy()
-						end
-					end)
+					-- The authoritative model is already at its exact saved pivot. Clients
+					-- render a non-interactive rising clone; the server never moves hitboxes.
+					constructionSite:Destroy()
 				else
 					Context.tweenBuildingTransition(constructionSite, newBuilding, size)
 				end

@@ -51,9 +51,11 @@ return function(Context)
 
 		local leaderstats = player:FindFirstChild("leaderstats")
 		local cash = leaderstats and leaderstats:FindFirstChild("Cash")
-		if cash then
-			cash.Value = cash.Value + sellValue
+		if not cash then
+			SellEvents.ErrorEvent:FireClient(player, "Cash is unavailable. Please try again.")
+			return false
 		end
+		cash.Value = cash.Value + sellValue
 
 		ReplicatedStorage.Events.Movement.CleanupPreview:FireClient(player)
 

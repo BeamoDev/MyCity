@@ -4,106 +4,28 @@ return function(Context)
 	local UIController = Context.UIController
 	local Icon = Context.Icon
 	local NotificationController = Context.NotificationController
-	local TweenService = Context.TweenService
-	local attentionRandom = Random.new()
+	local BUILDER_PACK_PRODUCT_ID = 3388944230 -- Match MarketPlaceHandler/ProductConfig.Rewards.
 
-	local function scaleFor(target)
-		local scale = target:FindFirstChildOfClass("UIScale")
-		if not scale then
-			scale = Instance.new("UIScale")
-			scale.Name = "BuilderPackAttentionScale"
-			scale.Parent = target
-		end
-		return scale
-	end
-
-	local function playAttentionTween(target, info, goals)
-		local tween = TweenService:Create(target, info, goals)
-		table.insert(State.builderPackAttentionTweens, tween)
-		tween:Play()
-		tween.Completed:Wait()
-		local index = table.find(State.builderPackAttentionTweens, tween)
-		if index then
-			table.remove(State.builderPackAttentionTweens, index)
-		end
-	end
-
-	function Context.cleanupBuilderPackAttention()
-		for _, tween in State.builderPackAttentionTweens or {} do
-			tween:Cancel()
-		end
-		State.builderPackAttentionTweens = {}
-		for target, original in State.builderPackAttentionOriginals or {} do
-			if target.Parent then
-				target.Rotation = original.rotation
-				if original.scale.Parent then
-					original.scale.Scale = original.scaleValue
-				end
+	function Context.setupBuilderPackPrice()
+		local button = State.ButtonFolder.Right.BuilderPack
+		local label = button:FindFirstChild("TextLabel1")
+		if not label or not label:IsA("TextLabel") then return end
+		label.Text = "… R$"
+		local function refresh()
+			local ok, info = pcall(function()
+				return Context.MarketPlace:GetProductInfo(BUILDER_PACK_PRODUCT_ID, Enum.InfoType.Product)
+			end)
+			if not label.Parent or State.ButtonFolder.Right.BuilderPack ~= button then return end
+			local price = ok and info and tonumber(info.PriceInRobux)
+			if price and price > 0 and price == math.floor(price) then
+				label.Text = string.format("%d R$", price)
+				Context.connections:delay(600, refresh)
+			else
+				label.Text = "— R$"
+				Context.connections:delay(90, refresh)
 			end
 		end
-		State.builderPackAttentionOriginals = {}
-	end
-
-	function Context.setupBuilderPackAttention()
-		Context.cleanupBuilderPackAttention()
-		local button = State.ButtonFolder.Right:FindFirstChild("BuilderPack")
-		local text = button and button:FindFirstChild("TextLabel1")
-		local icon = button and button:FindFirstChild("Icon")
-		if not button then
-			return
-		end
-
-		local function register(target)
-			if not (target and target:IsA("GuiObject")) then
-				return nil
-			end
-			local scale = scaleFor(target)
-			State.builderPackAttentionOriginals[target] = {
-				rotation = target.Rotation,
-				scale = scale,
-				scaleValue = scale.Scale,
-			}
-			return scale
-		end
-
-		local textScale = register(text)
-		local iconScale = register(icon)
-		local grow = TweenInfo.new(0.24, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-		local move = TweenInfo.new(0.20, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-		local settle = TweenInfo.new(0.30, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-		if textScale then
-			local original = State.builderPackAttentionOriginals[text]
-			Context.connections:spawn(function()
-				while text.Parent and button.Parent do
-					task.wait(attentionRandom:NextNumber(7, 12))
-					if button.Visible and text.Visible then
-						playAttentionTween(textScale, grow, { Scale = original.scaleValue * 1.14 })
-						playAttentionTween(text, move, { Rotation = -25 })
-						playAttentionTween(text, move, { Rotation = -15 })
-						playAttentionTween(text, move, { Rotation = -25 })
-						playAttentionTween(text, settle, { Rotation = original.rotation })
-						playAttentionTween(textScale, settle, { Scale = original.scaleValue })
-					end
-				end
-			end)
-		end
-
-		if iconScale then
-			local original = State.builderPackAttentionOriginals[icon]
-			Context.connections:spawn(function()
-				while icon.Parent and button.Parent do
-					task.wait(attentionRandom:NextNumber(9, 15))
-					if button.Visible and icon.Visible then
-						playAttentionTween(iconScale, grow, { Scale = original.scaleValue * 1.16 })
-						playAttentionTween(icon, move, { Rotation = original.rotation + 12 })
-						playAttentionTween(icon, move, { Rotation = original.rotation - 8 })
-						playAttentionTween(icon, settle, { Rotation = original.rotation })
-						playAttentionTween(iconScale, settle, { Scale = original.scaleValue })
-					end
-				end
-			end)
-		end
+		Context.connections:spawn(refresh)
 	end
 
 	function Context.connectButtonEvents()

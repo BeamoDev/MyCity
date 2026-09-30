@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 require(game:GetService("ReplicatedStorage"):WaitForChild("shared"):WaitForChild("Network")).wait()
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local ContentProvider = game:GetService("ContentProvider")
 local BuildingViewport = require(script.Parent.Parent:WaitForChild("ui"):WaitForChild("BuildingViewport"))
 
 State.playerGui = nil
@@ -14,8 +15,6 @@ State.PurchaseFrameTemplate = nil
 State.ItemTemplate = nil
 State.ItemList = nil
 State.ResetTimerLabel = nil
-State.BuildingPreviews = nil
-State.viewportPreviews = {}
 
 local RESET_INTERVAL = 300
 State.remainingTime = RESET_INTERVAL
@@ -47,6 +46,7 @@ local RARITY_COLORS = {
 	Epic = Color3.fromRGB(170, 85, 255),
 	Legendary = Color3.fromRGB(255, 170, 0),
 	Mythic = Color3.fromRGB(255, 85, 85),
+	Luxury = Color3.fromRGB(125, 225, 235),
 }
 
 local Context = {
@@ -56,6 +56,7 @@ local Context = {
 	ReplicatedStorage = ReplicatedStorage,
 	RunService = RunService,
 	Players = Players,
+	ContentProvider = ContentProvider,
 	BuildingViewport = BuildingViewport,
 	RESET_INTERVAL = RESET_INTERVAL,
 	buttonConnections = buttonConnections,
@@ -71,7 +72,6 @@ require(script:WaitForChild("StockDisplay"))(Context)
 require(script:WaitForChild("Lifecycle"))(Context)
 
 ShopController.clearConnections = function()
-	Context.stopViewportAnimation()
 	Context.connections:clear()
 	Context.clearViewportPreviews()
 end

@@ -1,5 +1,99 @@
 # MyCity project handoff
 
+## Backend audit repairs on current rollback (2026-09-28)
+
+UIController loads the synced Satchel TopbarPlus package at `ClientRoot.Satchel.Satchel.Packages.topbarplus`. The former `ReplicatedStorage.TopbarPlus.Icon` wait could hang HUD startup. This supersedes the older shared.TopbarPlus note below; there is no `src/shared/TopbarPlus` in this worktree. The Studio hierarchy audit checks the vendored package path.
+
+BuildingValidation verifies a plot's `Assigned` and `CityId` attributes against the player, in addition to saved PlotInfo, before accepting placement or building actions. Paid construction skips also verify the current plot owner and construction site's `OwnerUserId`. MilitaryBase uses its explicit half-grid snap, while Airport offsets only its long footprint axis and swaps that axis at quarter turns. At the seven-builder cap, all three server rejection paths send pass eligibility; NotificationController offers game pass `1407360513` only to nonowners, with a two-second prompt cooldown.
+
+Income collection and sale preserve the pending income or held tool if the player's Cash value is unexpectedly unavailable. Income debounce cleanup matches the exact user-ID prefix, so leaving user 12 cannot clear user 312's debounce. Shop data requests pass through RequestGuard for readiness, serialization and rate limiting. New Cash/Robux building purchase requests are rejected before any spend or prompt when the server's model or required construction-site template is absent; previously the shop could sell an unusable tool. Existing receipt recovery and inventory loading remain unchanged.
+
+Validation: 52 of 57 local test files pass, including focused security, placement, builder prompt, load recovery, receipt, payout, missing shop assets, airport, helicopter, traffic and lifecycle checks. The five remaining tests (`test_dev_products_ui`, `test_rebirth_appearance`, `test_social_hardening`, `test_starter_pack`, `test_ui_transitions`) contain pre-existing v410 expectations absent from the current v377 rollback; do not restore those features merely to satisfy the tests. All 282 source and 62 tooling Luau files compile; 466 literal local requires resolve; `git diff --check` passes. Roblox Studio and live DataStores remain untested.
+
+## Empty plot presentation and collection feedback (2026-09-27)
+
+Unoccupied plot welcome signs display `Welcome to Nothing` through the authored `Welcome to` prefix plus `CityName = "Nothing"`. PlotManager prepares empty plot templates before parenting them and initializes empty plots at startup; IncomeSystem refreshes the label and hides only the collection button's `ButtonInfo` while leaving the physical pad visible. CityRating disables the like sign's UI and prompt while empty, then re-enables them on `Assigned`/`CityId` changes or late UI replication. A forced empty-plot like request displays exactly `This plot is unoccupied.` without a status prefix. Empty income collection still animates the pad press/release, but sends no error alert. Friend boost text is unchanged.
+
+Burj Khalifa's placed-building prompt uses a tiny invisible `InfoAnchor` welded 10 studs below the Hitbox centre. Its BuildingInfo BillboardGui receives the same -10-stud world offset. The full Hitbox, visible model, placement bounds and collision rules are unchanged.
+
+Shop cards use their authored ImageId when it is a positive finite integer. A failed or unusable image load also falls back to the same fitted BuildingViewport as a missing ImageId. Inventory/toolbar still uses icons or text, without 3D viewports. These are source-only changes; the user performs Studio playtesting.
+
+## v377 targeted restoration and Luxury landmarks (2026-09-27)
+
+This section supersedes older v410 feature notes below where they conflict with the current source. Ambient road traffic again scales from roads, completed buildings and population, capped at 12 cars per city and 72 per server; civilians scale from completed buildings, roads and population, capped at 10 per city and 80 per server. The server AirportSystem and local MilitaryHelicopterController are initialized again. MilitaryBase is an Epic catalogue entry. Shop cards retain their authored image when ImageId is a positive number and use the shared lazy/culling BuildingViewport only when it is missing; Satchel remains image-or-name text, never a viewport. Other non-shop image surfaces remain on their v377 behavior. No Skyline automatic offer was restored.
+
+New Luxury rarity catalogue entries are `LuxurySkyscraper` (display `Luxury Skyscraper`) and `BurjKhalifa` (display `Burj Khalifa`), sorted as the last two shop cards even when locked. The runtime accepts either those keys or the spaced display names on models under `ServerStorage.Buildings`; their `Base` must match the assumed 5x5 and 6x6 construction footprints and `ReplicatedStorage.Assets.Constructions` must contain those site sizes. These model dimensions and construction assets are not source-exported, so verify in Studio before release. New values are in `BuildingConfig/Luxury.luau`; all existing building prices and economy rules are unchanged. No new authored ImageId is assumed, so these cards use the shop viewport fallback; their tools show the exact display name as Satchel text.
+
+Static verification: all 280 source and 56 tooling files compile; focused road, civilian, airport, helicopter, shop preview and Luxury configuration checks pass. Live Studio playtesting was intentionally left to the user. The existing path checker still reports the v377 `ReplicatedStorage.TopbarPlus.Icon` Studio-authored path as missing from source sync; Studio currently holds that root asset, but the source-only checker expects `shared.TopbarPlus`.
+
+## Player-facing city-like confirmation (2026-09-27)
+
+After a durable new city like, CityRating sends the liker a dedicated `LikeConfirmed` client response with `Liked <owner DisplayName>'s city`. LikeSystem renders that message verbatim without a `Success:` or `City Rating:` prefix and without the internal total. Duplicate-like and save-error feedback retains its descriptive title; the city owner still receives `<liker> liked your city!`. Like storage, reward sequencing and display counts are unchanged.
+
+## Creator chat and owner test profile (2026-09-27)
+
+ChatTags now emits exactly one white `[CREATOR]` prefix for user IDs `1790165114` and `2044711693`. The old staff allowlist, group membership lookup/[MEMBER] tag and Premium tag are removed; all other players retain Roblox's normal prefix with no MyCity role tag. System tips, rarity announcements, camera shake and the local command hiding hook remain in the same controller.
+
+Primary development owner `1790165114` retains `TutorialConfig.ResetProgressEveryJoin=true`, so OwnerReset replaces gameplay with schema defaults on every join while preserving transaction receipts/lease metadata. Those defaults explicitly re-arm `FirstRare=false`, `FirstEpic=false` and `FirstLegendary=false`, allowing all three first-discovery VFX to replay each test session. `SkipTutorial=true` and `ReplayEveryJoin=false` then mark tutorial stage 7 complete immediately, so this owner gets the fresh-player city/economy state without replaying the tutorial. The second Creator-tag account is not automatically reset.
+
+First Epic is now a real persisted rarity milestone. Construction completion includes Epic alongside Rare/Legendary and calls server VFX once when `PlayerInfo.FirstEpic` is false. Because no separate `Assets.Items.EpicVFX` exists, Epic intentionally reuses the authored purple `RareVFX` particles and `SFX.RareBuilding`, with its own purple lighting, intensity and `[SYSTEM]` first-EPIC announcement. It does not consume FirstRare. Existing profiles reconcile the new flag as false; owner fresh starts re-arm it every join.
+
+## Development-scaled city life (2026-09-27)
+
+Ambient road cars and Civilian NPCs now scale from city development while retaining strict performance budgets. RoadTraffic/Density requires at least two connected-capable road pieces; road count supplies physical vehicle capacity, while completed non-road buildings and the owner's current Population raise demand. Cars cap at 12 per city and 72 server-wide, are allocated round-robin across active plots, shed excess before adding work, and grow by at most one trip per city per one-second update. Plot attribute `AmbientCarTarget` exposes the current allocated target for Studio inspection. Rendering remains client-side through immutable AmbientTraffic descriptors.
+
+Civilian density separately uses completed non-road buildings, completed roads, and the square root of Population so large values have diminishing returns. It caps at 10 per city and 80 server-wide, allowing all eight full plots to reach their per-city target. The existing fair allocator, one-NPC-per-city-per-sync admission, 0.1-second movement step, cached geometry snapshots and cleanup behavior remain. Geometry now reports `buildingCount` and `roadCount` in addition to legacy total `count`. These are cosmetic targets only and never modify saved Population or income.
+
+## Authored SFX integration (2026-09-27)
+
+MyCity audio uses the authored `SoundService.SFX` bank only; there are no `GuessTheSize` dependencies. Hover/Click cover global GUI interaction, Swoosh covers panel navigation, Notification and NotificationLow cover normal/restock notices, Error covers rejected actions, Purchase covers confirmed purchases, Reward covers server-confirmed progression/daily/group/rebirth rewards, CaChing covers collected or sold income, PlaceSound and RotateSound cover placement, DestroySound covers stored/removed buildings, BuildingComplete covers completed construction, Popin covers subtitles and the post-tutorial quest panel, RareBuilding/LegendaryBuilding remain owned by the rarity VFX system, StartUp covers the intro reveal, and Ambience starts after Play. Rebirth no longer layers a second completion sound over its Reward notice, and rarity notifications are silent because their VFX already plays the matching rarity sound.
+
+All source-side lookups are guarded where practical. `Ambience2`, `Construction`, and `Nuke` have no distinct current gameplay event and are not forced over a better-matched cue; `Construction` retains its existing stop hook during intro handoff. Audio should not be stacked merely to exercise every asset.
+
+## Synced TopbarPlus path (2026-09-27)
+
+TopbarPlus is now source-synced at `src/shared/TopbarPlus/Icon`, mapping to `ReplicatedStorage.shared.TopbarPlus.Icon`. UIController requires that exact module. Do not restore the former `ReplicatedStorage.TopbarPlus.Icon` authored dependency: it caused client initialization to stop on an infinite WaitForChild and prevented all HUD controllers from starting. The Studio hierarchy audit and path checker now enforce the shared path.
+
+Validation: UI transition regression and all-source compilation pass; all 301 source and 55 tooling files compile, and all 473 literal local requires resolve with zero Studio-only targets.
+
+The recurring `rbxassetid://6525690145` warning is separate: that ID exists only on an authored Studio Sound and is not approved for this experience. No source reference exists to replace safely; approve/share the asset or replace the SoundId in Studio with an owned sound.
+
+## Builder-limit eighth-builder prompt (2026-09-27)
+
+When a normal building placement is rejected at the active builder cap, the server's existing `Notifications.BuilderLimitReached` event now includes whether the player can upgrade. Players without builder game pass `1407360513` are directly shown PromptGamePassPurchase for the eighth-builder pass; owners already at their eight-builder cap receive the existing notice/shop navigation but no redundant ownership prompt. A two-second client cooldown protects against duplicate race signals. The main placement validation and ConstructionSystem's final reservation race both send the eligibility bit. Legacy servers with no argument fall back to client UserOwnsGamePassAsync before prompting. Receipt/ownership authority remains server-side.
+
+Validation: new `test_builder_gamepass_prompt` covers both server rejection paths, the exact pass ID, owner exclusion, legacy fallback and duplicate-prompt protection. All 50 suites pass; current compilation/path totals are recorded in the TopbarPlus section above. The native Roblox purchase overlay remains unverified in Studio.
+
+## Shop developer-product controller migration (2026-09-27)
+
+The LocalScript formerly authored at `HUD.Frames.Shop.Frame.DevProductsClientScript` is replaced by client `UIController/DevProducts`. Lifecycle initializes it against `Shop.Frame.ScrollingFrame.MainBG`. Each offer now resolves its button directly as `<Card>.Buy`; the removed `<Card>.Pattern.Buy` hierarchy must not be restored. The legacy authored LocalScript is disabled and destroyed at runtime during the Studio migration window so it cannot duplicate prompts; remove it from the authored GUI when syncing.
+
+Cash1-6, MidDeal1, LuxuryDeal and Gamepass1-3 retain their existing IDs. Each button immediately fetches and then refreshes its player-local price every 60 seconds with client `GetProductInfoAsync`, writing `R$<PriceInRobux>` (or `R$???` on failure). Developer products use PromptProductPurchase and game passes use PromptGamePassPurchase. All connections and refresh threads belong to the HUD ConnectionScope and cancel on replacement.
+
+The building shop resolves each building's `PRICE_TIERS` product ID and updates both `ReplicatedStorage.Assets.Shop.PurchaseFrame.Buttons.RobuxBuy.TextLabel` (with `Textlabel` compatibility) and each cloned `ItemTemplate.Locked.Buy.Cost` from client `GetProductInfoAsync`. Both display `<PriceInRobux>`. Successful per-product values cache for 60 seconds, concurrent same-tier card lookups coalesce into one request, and async completion verifies live/current UI before writing.
+
+## Starter Pack offer (2026-09-27)
+
+The Petronas Towers/Apex Tower/Military Base Skyline offer is authored separately at `HUD.Frames.Starterpack` (lowercase `p`). `UIController/StarterPack` binds its `Frame.Close` and `Frame.PurchaseButton`, prompts developer product `3714990977`, fetches its player-local Robux price on the client, and writes the exact glyph/number form (for example `49`) only to `PurchaseButton.Frame.TextLabel`. The still-authored reward container named `Airport` is remapped visually to `PetronasTowers` and labeled Petronas Towers; Apex Tower maps to internal key `SkyscraperGeneric`. ProductConfig grants PetronasTowers, SkyscraperGeneric and MilitaryBase through the existing receipt ledger; developer products remain repeat-purchasable.
+
+Do not alias Starterpack to BuilderPack. `Buttons.Right.BuilderPack` still opens and closes the distinct `HUD.Frames.BuilderPack` offer. Its `TextLabel1` uses client GetProductInfoAsync with `Enum.InfoType.Product` for Builder Pack developer product `3388944230`, so it displays that offer's player-local `<price>` rather than Starter Pack product `3714990977` or eighth-builder game pass `1407360513`. The eighth-builder pass ID remains exclusive to builder-cap ownership and upgrade prompting.
+
+Skyline Pack is a genuine single-image TopbarPlus icon, not another `Buttons.Right` side button or a wide text control. It uses `rbxassetid://98703767607590`, left alignment and order 2 so it sits with Settings/Inventory. Its hover caption is `Skyline Pack · <localized product 3714990977 price>`. It toggles only `Frames.Starterpack`, blocks during tutorial, and is destroyed on HUD cleanup; the Starterpack Close button also deselects it. Do not clone BuilderPack into the side-button folder.
+
+The panel automatically offers itself four minutes after HUD initialization, waiting until the tutorial is over and no other modal is open. If that offer occurs and the player has not completed its product prompt, it offers once more 30 minutes later, then never automatically again during that HUD/session. A successful client prompt result closes the Starterpack frame, deselects its Skyline topbar icon and suppresses the reminder; it is presentation only and is not trusted for granting.
+
+The offer reproduces GuessTheSize's panel/reward motion on this authored hierarchy: rotating panel gradient, independently breathing/rotating `sunburst` elements, staggered reward viewport pops, and recursively collected background stars that independently drift/fade/spin. The PurchaseButton is intentionally simpler: only its UIGradient shine and occasional bounded 1.8-degree rotational shake animate; it has no hover/press scaling, size pulse or UIStroke animation. Star ImageButtons are non-interactive while bound and restore Active on teardown. Each reward's authored ViewportFrame gets a sanitized `Assets.BuildingPreviews` clone and warm fixed lighting. Petronas Towers, Apex Tower and Military Base all rotate around their visible-bounds centre at 18 degrees/second with a 180-degree initial facing correction. Their bounds-fit cameras retain the gentle lateral motion but use vertical direction 0.28 (was 0.12) for a stronger top/front presentation. Motion restores authored values while hidden and cleanup destroys generated cameras/worlds. No client-side item grant is trusted.
+
+MilitaryBase preview traffic is self-contained in its reward WorldModel. It hides the static Heli in its preview clone, makes a sanitized independent copy orbit above the base with bank/altitude variation, and spins MainBlades on local Y plus RearRotor on local Z at 900 degrees/second. The removed Airport reward/aircraft preview no longer runs. These cosmetics are destroyed with their preview worlds and never invoke the live Workspace helicopter system.
+
+Validation for these commerce surfaces is included in the current builder-limit section above.
+
+## Military Base half-grid placement (2026-09-27)
+
+Client placement explicitly treats `MilitaryBase` like Airport/Stadium for grid alignment: its snapped X/Z position receives the 0.5-stud grid offset even if the authored Base dimensions evaluate as even. This makes the configured 5x5 building align flush with adjacent grid buildings. Server-owned-land and overlap validation are unchanged; this is target alignment, not extra collision tolerance.
+
+Airport is a special axis-specific case because its authored Base is `(8, 0.05, 13.5)`: at 0/180 degrees X stays on the integer grid and only Z receives +0.5; at 90/270 degrees X receives +0.5 and Z stays integer. It no longer shifts both axes, so the even 8-stud side can align adjacently.
+
 ## Server-owned airport aircraft (2026-09-27)
 
 New `server.systems.world.AirportSystem`, initialized by ServerBootstrap, replaces the script formerly embedded in the Airport asset. On startup it disables BaseScripts in `ServerStorage.Buildings.Airport`; placed Airport scripts are also disabled, so the old controller must not run beside the central system. Each completed placed Airport is validated once for the existing A1 arrival and D1 departure Attachment names, receives a `RuntimePlanes` folder and runs at most one aircraft cycle: approach -> touchdown -> braking -> continuous taxi -> 10-second gate wait -> taxi/takeoff/departure -> 12-24-second gap. It no longer spawns a new arrival while the prior aircraft is still departing, uses BindableEvents, pauses at every taxi point, repeatedly searches attachments, or moves only PrimaryPart.
@@ -32,7 +126,7 @@ Validation: `test_shop_viewports` checks all five surfaces use BuildingViewport,
 
 ## Military Base helicopter and new catalogue buildings (2026-09-27)
 
-`MilitaryBase` is now an Epic catalogue building (5x5, $680,000, 24 rebirths, limit 1) and `SkyscraperGeneric` is Legendary (4x4, $1,150,000, 125,000 population, limit 2). Both names exactly match the authored `ServerStorage.Buildings` models. Neither has an ImageId yet; the shop now uses 3D previews and does not need one, while other icon-based surfaces remain blank until IDs are supplied. The selected 5x5/4x4 Size values are estimates from the supplied hierarchy; BuildingTemplates.audit reports a footprint mismatch at startup if either authored Base differs from its construction model.
+`MilitaryBase` is now an Epic catalogue building (5x5, $680,000, 24 rebirths, limit 1) and internal key `SkyscraperGeneric` is the Legendary player-facing **Apex Tower** (4x4, $1,150,000, 125,000 population, limit 2). Internal names exactly match the authored `ServerStorage.Buildings` models and must not be renamed. Neither has an ImageId yet; the shop now uses 3D previews and does not need one, while other icon-based surfaces remain blank until IDs are supplied. The selected 5x5/4x4 Size values are estimates from the supplied hierarchy; BuildingTemplates.audit reports a footprint mismatch at startup if either authored Base differs from its construction model.
 
 New client.controllers.world.MilitaryHelicopterController watches all completed placed `MilitaryBase` models. It locally hides the building's welded `Heli`, creates one anchored/collisionless cosmetic clone in Workspace.Misc.BuildingAnimations, and flies it around the building. The maximum default boundary is 9 studs. Smooth per-building harmonics vary radius, horizontal offset and altitude to produce deterministic tighter/wider and lower/higher passes instead of a perfect flat circle. Default altitude is two studs below the authored Heli height and clamped to at least 8 studs, with smooth variation around it. The default imported-model yaw correction is +90 degrees so the nose, not the left side, leads. It follows the 3D route tangent with a dynamic 5-15 degree inward bank and +/-4 degree pitch. Every cloned part explicitly resets LocalTransparencyModifier to zero before the source is hidden. The supported authored layout is `Heli` Model containing direct MeshParts `MainBlades`, `Body` and `RearRotor`: MainBlades spins about local Y, RearRotor about local Z, and Body follows rigidly. Former mesh names remain fallback aliases. The controller waits for Base, Heli and both rotors and retries as descendants replicate. Removing/storing the building cleans up; no moving geometry replicates from the server.
 
@@ -184,7 +278,7 @@ Exact authored names include `shared`, `server`, `MarketPlaceHandler`, `Enviorme
 - `ReplicatedStorage.Assets.Items` contains the templates, with building/construction billboards, prompts, SpeechBubble and rarity effects.
 - PlayerDataModule needs no authored data templates. DataSchema creates player Data/leaderstats and supplies missing nested defaults in code.
 - Client controller templates move with their owning modules unless explicitly relocated. Default is `ReplicatedStorage.Assets.Default`; ProximityPromptController retains only themed overrides; shop PurchaseFrame/ItemTemplate are in `ReplicatedStorage.Assets.Shop`; TutorialController keeps beam/anchor templates; UIController keeps its GUI templates.
-- `ReplicatedStorage.TopbarPlus.Icon`, Assets models/tools, StarterGui.HUD, Workspace.Map and ServerStorage.PlotTemplate remain authored Studio dependencies.
+- `ReplicatedStorage.shared.TopbarPlus.Icon` is source-synced. Assets models/tools, StarterGui.HUD, Workspace.Map and ServerStorage.PlotTemplate remain authored Studio dependencies.
 - ToolFactory creates Tools and marker values in code; Assets.Tool/Tool.Init and ToolBuildings are retired dependencies. HeldBuildingVisual clones ServerStorage.Buildings models for the held miniature. BuildingTools initializes behavior centrally. Other scripts hidden inside Studio assets still require inspection/export.
 
 ## Folder structure and ownership
@@ -267,7 +361,7 @@ HudBootstrap owns HUD replacement. It cancels unfinished initialization, calls c
 
 ## Validation and tools
 
-`tools/check_paths.py` checks literal local requires. TopbarPlus.Icon is Studio-only; the Initialization controller loop and Rebirth's ShopSystem require are dynamic and reviewed manually.
+`tools/check_paths.py` checks literal local requires, including the synced shared.TopbarPlus.Icon path; the Initialization controller loop and Rebirth's ShopSystem require are dynamic and reviewed manually.
 
 Run the actual Lune binary if the Rokit shim fails:
 `C:/Users/636922/.rokit/tool-storage/lune-org/lune/0.10.2/lune.exe`.

@@ -35,13 +35,14 @@ function BuildingPlacement.isValidPlacement(player, previewCFrame, tool)
 
 		local buildersByPlayer = ConstructionSystem.getActiveBuilders() or {}
 		local currentBuilders = buildersByPlayer[player.UserId] or 0
-		local maxBuilders = ownsGamePass(player) and MAX_BUILDERS + 1 or MAX_BUILDERS
+		local hasBuilderPass = ownsGamePass(player)
+		local maxBuilders = hasBuilderPass and MAX_BUILDERS + 1 or MAX_BUILDERS
 
-		game.ReplicatedStorage.Events.UI.UpdateBuilderUI:FireClient(player, currentBuilders, maxBuilders)
+		ConstructionSystem.ConstructionBuilder.publishBuilderCount(player, currentBuilders, maxBuilders)
 
 		if currentBuilders >= maxBuilders then
-			game.ReplicatedStorage.Events.UI.UpdateBuilderUI:FireClient(player, currentBuilders, maxBuilders)
-			game.ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player)
+			ConstructionSystem.ConstructionBuilder.publishBuilderCount(player, currentBuilders, maxBuilders)
+			game.ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player, not hasBuilderPass)
 			return false, "BuilderLimit"
 		end
 	end
@@ -124,10 +125,11 @@ function BuildingPlacement.placeBuilding(player, cframe, tool, buildingName)
 		require(script.Parent.Parent.Parent:WaitForChild("construction"):WaitForChild("ConstructionSystem"))
 	local activeBuilders = ConstructionSystem.getActiveBuilders and ConstructionSystem.getActiveBuilders() or {}
 	local currentBuilders = activeBuilders[player.UserId] or 0
-	local maxBuilders = ownsGamePass(player) and (MAX_BUILDERS + 1) or MAX_BUILDERS
+	local hasBuilderPass = ownsGamePass(player)
+	local maxBuilders = hasBuilderPass and (MAX_BUILDERS + 1) or MAX_BUILDERS
 
 	if not isInTutorial and not isTutorialBank and currentBuilders >= maxBuilders then
-		ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player)
+		ReplicatedStorage.Events.Notifications.BuilderLimitReached:FireClient(player, not hasBuilderPass)
 		return false, "BuilderLimit"
 	end
 

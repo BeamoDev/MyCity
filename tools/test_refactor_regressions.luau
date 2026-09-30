@@ -55,6 +55,7 @@ local context = {
 	formatTime = function(number)
 		return tostring(number)
 	end,
+	clearViewportPreviews = function() end,
 }
 local installer = luau.load(
 	fs.readFile("src/client/controllers/shop/ShopController/Lifecycle.luau"),

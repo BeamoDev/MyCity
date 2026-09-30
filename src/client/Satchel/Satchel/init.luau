@@ -437,7 +437,7 @@ local function MakeSlot(parent: Instance, initIndex: number?): GuiObject
 				ToolName.Visible = true
 			end
 
-			ToolName.Text = tool.Name
+			ToolName.Text = tool:GetAttribute("DisplayName") or tool.Name
 
 			-- If there is a tooltip, then show it
 			if ToolTip and tool:IsA("Tool") then --NOTE: HopperBin

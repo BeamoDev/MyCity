@@ -16,7 +16,28 @@ return function(Context)
 		-- Set basic info
 		frame.ItemName.Text = item.DisplayName or item.Name
 		frame.Description.Text = item.Description or ""
-		Context.createBuildingViewport(frame, item.Name)
+		local imageHost = frame.BuildingIcon.ImageLabel
+		local imageId = tonumber(item.ImageID)
+		if imageId and imageId > 0 and imageId < math.huge and imageId % 1 == 0 then
+			local contentId = "rbxassetid://" .. tostring(imageId)
+			imageHost.Image = contentId
+			task.spawn(function()
+				local failed = false
+				local ok = pcall(function()
+					Context.ContentProvider:PreloadAsync({ imageHost }, function(_, status)
+						if status ~= Enum.AssetFetchStatus.Success then
+							failed = true
+						end
+					end)
+				end)
+				if (not ok or failed) and frame.Parent and imageHost.Image == contentId then
+					Context.createBuildingViewport(frame, item.Name)
+				end
+			end)
+		else
+			imageHost.Image = ""
+			Context.createBuildingViewport(frame, item.Name)
+		end
 
 		-- Set rarity colors for backgrounds
 		local rarityColor = RARITY_COLORS[item.Rarity] or RARITY_COLORS.Common
@@ -247,6 +268,14 @@ return function(Context)
 
 		-- Sort items
 		table.sort(stock, function(a, b)
+			-- These two Luxury landmarks stay at the end even while locked.
+			local landmarkOrder = { LuxurySkyscraper = 1, BurjKhalifa = 2 }
+			local aLandmark, bLandmark = landmarkOrder[a.Name], landmarkOrder[b.Name]
+			if aLandmark or bLandmark then
+				if not aLandmark then return true end
+				if not bLandmark then return false end
+				return aLandmark < bLandmark
+			end
 			if a.IsLocked ~= b.IsLocked then
 				return not a.IsLocked
 			end
@@ -263,7 +292,7 @@ return function(Context)
 				return a.Cost < b.Cost
 			end
 
-			local rarityOrder = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6 }
+			local rarityOrder = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Luxury = 7 }
 			local aOrder = rarityOrder[a.Rarity] or 7
 			local bOrder = rarityOrder[b.Rarity] or 7
 			return aOrder < bOrder
@@ -284,9 +313,7 @@ return function(Context)
 			frame.LayoutOrder = i * 2
 			frame.Parent = State.ItemList
 		end
-
-		-- Keep the final catalogue card clear of the ScrollingFrame's lower clipping edge.
-		-- The spacer remains visible for UIListLayout to include it, but renders nothing.
+		-- Leave enough scroll space to bring the final Luxury card fully into view.
 		local padding = Instance.new("Frame")
 		padding.Name = "ShopBottomPadding1"
 		padding.BackgroundTransparency = 1

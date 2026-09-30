@@ -68,9 +68,9 @@ function PlayerData.loadPlayerData(player)
 	}
 	sessions[player] = session
 	local ok, record
+	player:SetAttribute("MyCityLoadStage", "Profile")
 	local deadline = os.clock() + ACQUIRE_TIMEOUT
 	local errors = 0
-	player:SetAttribute("MyCityLoadStage", "Profile")
 	while active(player) do
 		ok, record = pcall(Store.acquire, player.UserId, session.id)
 		if ok and record then
@@ -111,6 +111,8 @@ function PlayerData.loadPlayerData(player)
 		restoreRecord = OwnerReset.apply(player, record)
 		local data, stats = Codec.restore(Schema.Normalize(restoreRecord, player.Name))
 		Migration(player, data, stats)
+		-- Legacy saved CityName strings must be filtered while Data is still server-only.
+		require(script.Parent.Parent.systems.world.CityNameSystem).sanitizeProfileName(player, data)
 		return data, stats
 	end, debug.traceback)
 	if not restored or not player.Parent or player:GetAttribute("MyCityLeaving") then

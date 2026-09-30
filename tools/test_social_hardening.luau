@@ -1,4 +1,28 @@
 local fs, luau = require("@lune/fs"), require("@lune/luau")
+
+local chatTags = fs.readFile("src/client/controllers/social/ChatTags.luau")
+assert(chatTags:find("[1790165114] = true", 1, true) and chatTags:find("[2044711693] = true", 1, true))
+assert(chatTags:find("[CREATOR]", 1, true), "Creator chat label missing")
+assert(not chatTags:find("[MEMBER]", 1, true) and not chatTags:find("[PREMIUM]", 1, true))
+assert(not chatTags:find("[STAFF]", 1, true) and not chatTags:find("IsInGroup", 1, true))
+
+local tutorialConfig = luau.load(fs.readFile("src/server/config/TutorialConfig.luau"))()
+assert(
+	tutorialConfig.OwnerUserId == 1790165114
+		and tutorialConfig.ResetProgressEveryJoin
+		and tutorialConfig.SkipTutorial
+		and not tutorialConfig.ReplayEveryJoin,
+	"Owner testing profile must reset every join while skipping the tutorial"
+)
+print("PASS: creator-only chat tags and owner fresh-start/tutorial-skip configuration")
+
+local cityRatingSource = fs.readFile("src/server/systems/social/CityRating.luau")
+local likeClientSource = fs.readFile("src/client/controllers/social/LikeSystem.luau")
+assert(not cityRatingSource:find('"Success", "Like added!', 1, true), "City like still exposes developer wording")
+assert(cityRatingSource:find('"LikeConfirmed", "Liked "', 1, true), "Friendly city-like message missing")
+assert(likeClientSource:find('title == "LikeConfirmed"', 1, true), "Like confirmation still prepends a status title")
+print("PASS: city-like confirmation says only who was liked")
+
 local function load(path, env)
 	return luau.load(fs.readFile(path), { environment = env })()
 end

@@ -11,12 +11,11 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
-local Icon = require(ReplicatedStorage:WaitForChild("TopbarPlus"):WaitForChild("Icon"))
+local Icon = require(script.Parent.Parent.Parent.Satchel.Satchel.Packages.topbarplus)
 State.settingsIcon = nil
 
 local Workspace = game:GetService("Workspace")
 local NotificationController = require(script.Parent:WaitForChild("NotificationController"))
-local BuildingViewport = require(script.Parent:WaitForChild("BuildingViewport"))
 local player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -47,8 +46,6 @@ State.DailyRewardFrame = nil
 State.dailyRewardCountdown = nil
 State.dailyRewardConnection = nil
 State.BuilderPackFrame = nil
-State.builderPackAttentionTweens = {}
-State.builderPackAttentionOriginals = {}
 State.weatherFrame = nil
 
 State.lastRequestTime = 0
@@ -95,7 +92,6 @@ local Context = {
 	Icon = Icon,
 	Workspace = Workspace,
 	NotificationController = NotificationController,
-	BuildingViewport = BuildingViewport,
 	player = player,
 	Camera = Camera,
 	REQUEST_COOLDOWN = REQUEST_COOLDOWN,

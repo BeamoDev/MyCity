@@ -16,7 +16,7 @@ root.Position = r.Vector3.new(0, 4, 0)
 local data = child(storage, "Folder", "Data")
 local plotNumber = child(child(data, "Folder", "PlotInfo"), "IntValue", "Plot")
 plotNumber.Value = 1
-local player = { Parent = true, Character = character }
+local player = { Parent = true, Character = character, UserId = 42 }
 function player:GetAttribute(name)
 	return attributes[name]
 end
@@ -28,6 +28,8 @@ child(tool, "StringValue", "ToolName")
 child(tool, "BoolValue", "IsValid")
 local plots = child(storage, "Folder", "Plots")
 local plot = child(plots, "Folder", "Plot1")
+plot:SetAttribute("Assigned", true)
+plot:SetAttribute("CityId", player.UserId)
 local buildings = child(plot, "Folder", "Buildings")
 local placed = child(buildings, "Folder", "Placed")
 child(buildings, "Folder", "Construction")
@@ -97,6 +99,10 @@ tool.Parent = backpack
 local building = child(placed, "Model", "Owned")
 building:SetAttribute("BuildingID", "id")
 assert(validation.ownsBuilding(player, building))
+plot:SetAttribute("CityId", 99)
+assert(not validation.ownsBuilding(player, building), "Stale plot number granted another city's building authority")
+assert(not validation.placement(player, position, tool), "Stale plot number granted placement authority")
+plot:SetAttribute("CityId", player.UserId)
 building.Parent = storage
 assert(not validation.ownsBuilding(player, building), "Foreign building accepted")
 local occupant = child(placed, "Model", "Occupant")

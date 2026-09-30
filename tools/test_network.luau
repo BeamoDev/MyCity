@@ -77,10 +77,11 @@ local function inspect(parent, path)
 	end
 end
 inspect(storage, "")
-assert(events == 85 and functions == 2, "Unexpected remote inventory")
+assert(events == 86 and functions == 2, "Unexpected remote inventory")
 assert(registry[".Functions.Friends.GetFriendBoost"])
 assert(registry[".Events.DailyQuests.Claim"] and registry[".Events.DailyQuests.Update"])
 assert(registry[".Events.Sell.SoldWithProfit"] and registry[".Events.Notifications.RarityAnnounce"])
+assert(registry[".Events.VFX.RarityRise"])
 assert(not registry[".Events.Friends.GetFriendBoost"])
 local unrelated = instance("Folder")
 unrelated.Name = "AuthoredAssets"
@@ -123,7 +124,7 @@ assert(notifications.children.RarityAnnounce == rarity)
 rarity.ClassName = "RemoteEvent"
 server.start()
 print(
-	"PASS: 81 events + 2 functions; empty startup, idempotence, preserved instances, partial replication, server-only creation, class mismatch"
+	"PASS: 86 events + 2 functions; empty startup, idempotence, preserved instances, partial replication, server-only creation, class mismatch"
 )
 
 -- Missing root gets a bounded startup diagnostic without creating client remotes.

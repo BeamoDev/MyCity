@@ -132,7 +132,10 @@ local function harness(options)
 					return { Destroy = function() end }, { Destroy = function() end }
 				end,
 			},
-			Parent = { Parent = { systems = { security = { RequestGuard = {} } } } },
+			Parent = { Parent = { systems = {
+				security = { RequestGuard = {} },
+				world = { CityNameSystem = { sanitizeProfileName = function() end } },
+			} } },
 		},
 	})
 	return {

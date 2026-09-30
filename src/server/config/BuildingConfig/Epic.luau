@@ -164,7 +164,6 @@ return {
 		PopulationRequired = 50000,
 		BuildLimit = 2,
 	},
-
 	MilitaryBase = {
 		DisplayName = "Military Base",
 		Description = "A high-security aerial command center",
@@ -173,7 +172,6 @@ return {
 		Cost = 680000,
 		Income = 740,
 		Population = 120,
-		-- ImageId: add the shop/inventory icon asset id here.
 		Rarity = "Epic",
 		RebirthRequired = 24,
 		PopulationRequired = 0,

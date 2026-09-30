@@ -12,7 +12,9 @@ function Budget.checkpoint(player)
 	while count >= MAX_OBJECTS or (started and os.clock() - started >= MAX_SECONDS) do
 		Heartbeat:Wait()
 	end
-	assert(player.Parent and not player:GetAttribute("MyCityLeaving"), "Player left during city restoration")
+	if player then
+		assert(player.Parent and not player:GetAttribute("MyCityLeaving"), "Player left during city restoration")
+	end
 	started = started or os.clock()
 	count += 1
 end

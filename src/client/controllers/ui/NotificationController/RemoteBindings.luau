@@ -5,6 +5,20 @@ return function(Context)
 	local TweenService = Context.TweenService
 	local ReplicatedStorage = Context.ReplicatedStorage
 	local RunService = Context.RunService
+	local BUILDER_GAMEPASS_ID = 1407360513
+	local lastBuilderPassPrompt = -math.huge
+	local function promptBuilderPass(canUpgrade)
+		if canUpgrade == false then return end
+		local player = Context.Players.LocalPlayer
+		if canUpgrade == nil then
+			local ok, owns = pcall(Context.MarketplaceService.UserOwnsGamePassAsync, Context.MarketplaceService, player.UserId, BUILDER_GAMEPASS_ID)
+			if not ok or owns then return end
+		end
+		local now = os.clock()
+		if now - lastBuilderPassPrompt < 2 then return end
+		lastBuilderPassPrompt = now
+		pcall(Context.MarketplaceService.PromptGamePassPurchase, Context.MarketplaceService, player, BUILDER_GAMEPASS_ID)
+	end
 
 	function Context.connectNotificationEvents()
 		local function message(name, kind, fallback)
@@ -129,7 +143,8 @@ return function(Context)
 			NotificationController.showNotification("CannotPlace", "Cannot Place Here!")
 		end)
 
-		Context.connections:connect(ReplicatedStorage.Events.Notifications.BuilderLimitReached.OnClientEvent, function()
+		Context.connections:connect(ReplicatedStorage.Events.Notifications.BuilderLimitReached.OnClientEvent, function(canUpgrade)
+			promptBuilderPass(canUpgrade)
 			if not State.playerGui then
 				NotificationController.showNotification("BuildingLimitReached", "Builder Limit Reached!")
 				return

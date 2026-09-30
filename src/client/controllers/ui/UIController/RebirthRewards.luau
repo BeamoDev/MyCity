@@ -1,7 +1,7 @@
 -- Rebirth reward cards use authored Assets templates only.
 local Rewards = {}
 local GENERATED = "MyCityRebirthReward"
-function Rewards.render(scroll, data, templates, BuildingViewport)
+function Rewards.render(scroll, data, templates)
 	for _, child in scroll:GetChildren() do
 		if child:GetAttribute(GENERATED) then
 			child:Destroy()
@@ -49,10 +49,8 @@ function Rewards.render(scroll, data, templates, BuildingViewport)
 				row:SetAttribute(GENERATED, true)
 				row:FindFirstChild("BuildingName", true).Text = building.name
 				local icon = row:FindFirstChild("BuildingIcon", true)
-				if icon and BuildingViewport and building.building then
-					BuildingViewport.attach(icon, building.building)
-				elseif icon and (icon:IsA("ImageLabel") or icon:IsA("ImageButton")) then
-					icon.Image = ""
+				if icon then
+					icon.Image = "rbxassetid://" .. tostring(building.imageId or 0)
 				end
 				row.Parent = scroll
 			end

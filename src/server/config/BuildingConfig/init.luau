@@ -9,6 +9,7 @@ for _, category in
 		require(script.Epic),
 		require(script.Legendary),
 		require(script.Mythic),
+		require(script.Luxury),
 	}
 do
 	for name, definition in pairs(category) do
@@ -30,6 +31,8 @@ for _, name in
 		"Mansion",
 		"LuxuryHouse",
 		"LuxuryCondo",
+		"LuxurySkyscraper",
+		"BurjKhalifa",
 	}
 do
 	if catalogue[name] then

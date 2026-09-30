@@ -6,4 +6,5 @@ return {
 	Epic = Color3.fromRGB(212, 0, 212),
 	Legendary = Color3.fromRGB(255, 170, 0),
 	Mythic = Color3.fromRGB(255, 85, 255),
+	Luxury = Color3.fromRGB(125, 225, 235),
 }

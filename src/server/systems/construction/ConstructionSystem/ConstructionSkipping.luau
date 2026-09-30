@@ -100,7 +100,7 @@ function ConstructionSkipping.skipConstruction(player, constructionSiteIdentifie
 	end
 
 	local plot = plotsFolder:FindFirstChild("Plot" .. plotData.Value)
-	if not plot then
+	if not plot or plot:GetAttribute("Assigned") ~= true or tonumber(plot:GetAttribute("CityId")) ~= player.UserId then
 		return false
 	end
 
@@ -125,6 +125,9 @@ function ConstructionSkipping.skipConstruction(player, constructionSiteIdentifie
 	end
 
 	if not constructionSite then
+		return false
+	end
+	if constructionSite:GetAttribute("OwnerUserId") ~= player.UserId then
 		return false
 	end
 

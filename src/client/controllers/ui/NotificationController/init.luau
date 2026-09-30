@@ -8,6 +8,7 @@ require(game:GetService("ReplicatedStorage"):WaitForChild("shared"):WaitForChild
 local SoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 State.playerGui = nil
 State.notificationsFrame = nil
@@ -95,6 +96,7 @@ local Context = {
 	SoundService = SoundService,
 	RunService = RunService,
 	Players = Players,
+	MarketplaceService = MarketplaceService,
 	activeNotifications = activeNotifications,
 	recentNotifications = recentNotifications,
 	MAX_NOTIFICATIONS = MAX_NOTIFICATIONS,

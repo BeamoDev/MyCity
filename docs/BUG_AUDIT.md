@@ -1,5 +1,100 @@
 # MyCity backend audit and refactor
 
+## Current rollback backend audit (2026-09-28)
+
+- Replaced UIController's unsynced root TopbarPlus wait with the project's already synced Satchel package. Source path validation now resolves all 466 literal local requires.
+- Placement and paid skip paths require current plot ownership; paid skips also require the site's `OwnerUserId`. Military Base and Airport previews now use their intended half-grid alignment.
+- All builder-cap rejection paths report eighth-builder pass eligibility. The client prompts pass `1407360513` only when an upgrade is available and throttles repeated prompts.
+- An unavailable Cash value cannot consume collected income or a sale tool. Income debounce cleanup matches the departing user's exact ID prefix. Shop data requests use the request guard. New Cash and Robux building purchase requests reject missing server model/site assets before spending or opening a prompt.
+- 52/57 local tests pass; five remaining scripts carry pre-existing rollback-incompatible expectations for removed v410 UI/commerce features. Source/tool compilation, path audit and diff whitespace checks pass. Studio soak testing remains necessary.
+
+## Empty plot and shop image fallback cleanup (2026-09-27)
+
+- Empty plots say `Welcome to Nothing` on the city sign. The Collect Income pad remains visible and responsive while only its `ButtonInfo` is hidden; like UI/prompt stays hidden until ownership is assigned.
+- An empty income touch still plays the button press/release animation and sends no red empty-income alert. A forced empty-plot like displays only `This plot is unoccupied.`
+- Valid shop ImageIds keep their images; missing, malformed or failed-to-load images use the fitted 3D building preview. Inventory remains icon/text based. Friend boost presentation is untouched.
+- Changes were compiled and statically checked only; Studio transition and visual checks are left to the user.
+- Burj Khalifa's info prompt and billboard are lowered by 10 studs through a separate non-colliding UI anchor and billboard offset; the building model and hitbox footprint do not move.
+
+## Targeted v377 restoration and Luxury skyscrapers (2026-09-27)
+
+- Restored development-aware road cars (12/city, 72/server), civilians (10/city, 80/server), server airport flights and client Military Base helicopter flight. Vehicle targets grow gradually and retain global budgets.
+- The building shop uses existing positive ImageIds and creates a 3D viewport only for a missing ImageId. Inventory/toolbar keeps image or name text; other image surfaces were not converted.
+- Added the Luxury rarity, `Luxury Skyscraper` and `Burj Khalifa` as the final two shop cards. Burj has the highest configured cost, income, build time, population and assumed 6x6 footprint. The source normalizes spaced Studio model names to stable internal keys at startup.
+- Studio model Base dimensions and the 5x5/6x6 construction templates were not available as exported source. They require the user's own Studio verification. Static focused checks and source compilation pass; the source path checker still flags the pre-existing Studio-authored root TopbarPlus path.
+
+## City-like confirmation wording (2026-09-27)
+
+- A newly saved like now tells the liker only `Liked <owner DisplayName>'s city`; the former `Success: Like added! Total: ...` developer-style text is removed.
+- Duplicate/error titles and the owner's incoming-like notice are unchanged. Persistence and reward settlement are unchanged.
+
+
+## Pack price and purchase-close correction (2026-09-27)
+
+- `Buttons.Right.BuilderPack.TextLabel1` now resolves developer product `3388944230` with `Enum.InfoType.Product`; it no longer displays eighth-builder game pass `1407360513` pricing.
+- A successful Starter/Skyline product `3714990977` prompt result immediately closes `Frames.Starterpack`, deselects its topbar icon and suppresses the later reminder. Receipt granting remains server-authoritative.
+
+
+## Creator chat and repeatable owner testing (2026-09-27)
+
+- Only `1790165114` and `2044711693` receive the white `[CREATOR]` chat prefix. Staff, member/group and Premium custom tags were removed.
+- Owner `1790165114` still receives a fresh gameplay profile every join, but tutorial preparation immediately completes/skips the tutorial.
+- The fresh profile resets `FirstRare`, `FirstEpic` and `FirstLegendary` to false, so all first-rarity VFX paths can run again each owner session. Purchase receipt/session metadata remains preserved.
+- Epic construction completion is now included in the server first-rarity check. It has an independent persisted flag/announcement and reuses the authored purple RareVFX/RareBuilding assets because no Epic-specific asset exists.
+
+
+## Development-scaled city life (2026-09-27)
+
+- Road cars scale from streets plus building/population demand, require at least two road pieces, and remain capped at 12 per plot / 72 per server.
+- Car targets are globally allocated round-robin, excess trips retire before new ones spawn, and each city adds at most one trip per second. Cars remain client-rendered immutable descriptors.
+- Civilians scale independently from completed non-road buildings, roads and diminishing-return Population, capped at 10 per plot / 80 per server with gradual one-per-sync growth.
+- No persistence or economy values are changed. Studio should verify visual density and server/client frame time with eight mature occupied plots.
+
+
+## TopbarPlus startup hang fixed (2026-09-27)
+
+The 13:54 Studio log showed UIController blocked at `ReplicatedStorage:WaitForChild("TopbarPlus")`. TopbarPlus has since been source-synced under `ReplicatedStorage.shared.TopbarPlus.Icon`; UIController now requires that exact path, and both the hierarchy audit and source-path checker reject the removed root path. This allows UIController initialization, including pack buttons and all downstream HUD bindings, to proceed.
+
+Local validation: UI transition regression and all-source compilation pass; 301 source and 55 tooling files compile, and 473 literal local requires resolve with zero Studio-only targets.
+
+The two `6525690145` failures are unrelated authored Sound permission warnings. That ID is absent from exported source, so it was not replaced blindly; the Studio Sound must use an experience-owned/approved asset.
+
+## Builder-limit upgrade prompt (2026-09-27)
+
+Builder-limit rejection now carries a server-computed `canUpgrade` flag through `Notifications.BuilderLimitReached`. The client retains the limit notice and shop navigation, and additionally prompts game pass `1407360513` only when it can raise the player from seven to eight simultaneous builders. Existing pass owners at their cap are not prompted. Both validation and the final construction reservation race emit the flag; the prompt is cooldown-protected, while legacy argument-less events perform an ownership lookup first.
+
+Local validation: all 50 suites pass, including the exact builder-pass prompt regression; current compilation/path totals are recorded in the TopbarPlus section above. Studio still needs a native purchase-overlay test.
+
+## Shop embedded commerce script migrated (2026-09-27)
+
+The supplied `Shop.Frame.DevProductsClientScript` behavior now lives in centralized client `UIController/DevProducts`, with HUD lifecycle-owned connections/tasks. It binds the current direct `MainBG.<Card>.Buy` hierarchy instead of obsolete `.Pattern.Buy`, retains all eight developer-product IDs and three game-pass IDs, prompts the correct marketplace API, and refreshes personalized client prices every 60 seconds. A still-authored legacy LocalScript is disabled and destroyed at runtime to prevent duplicate prompts until it is removed from the Studio GUI.
+
+Building-shop PurchaseFrame clones now update `Buttons.RobuxBuy.TextLabel`, and locked ItemTemplate clones update `Locked.Buy.Cost`, from the selected cash tier's actual developer-product ID using the same client-local lookup. Both use `<price>`. Successful values cache for 60 seconds, simultaneous same-tier cards share one in-flight request, and async completion checks live/current UI before writing. PurchaseFrame also supports alternate authored casing `Textlabel`.
+
+Commerce-surface validation totals are included in the current builder-limit section above. Studio still needs visual and live prompt tests against the authored Shop hierarchy.
+
+## Starter Pack UI and receipt grant (2026-09-27)
+
+`HUD.Frames.Starterpack` is the independent Petronas Towers/Apex Tower/Military Base Skyline offer. Its authored Close/PurchaseButton controls are bound directly, product `3714990977` is prompted as a developer product, and client `GetProductInfoAsync` writes its regional/optimized `PriceInRobux` as an unspaced Robux glyph and number to the exact `PurchaseButton.Frame.TextLabel`. The authored reward card still named Airport is remapped to PetronasTowers; the receipt-safe server plan grants PetronasTowers, internal `SkyscraperGeneric` (displayed as Apex Tower), and MilitaryBase. As a developer product, the pack can be bought again; every individual receipt remains idempotent through the existing ledger.
+
+The existing `Buttons.Right.BuilderPack` remains mapped to the separate `HUD.Frames.BuilderPack`, including its original `Frame.X` close binding. Its `TextLabel1` independently displays the localized price of eighth-builder game pass `1407360513`; it is not populated from Starter Pack product `3714990977`.
+
+A distinct single-image TopbarPlus Skyline Pack icon uses `rbxassetid://98703767607590`, left alignment and order 2 beside the existing Settings/Inventory icons. The icon has no persistent text label; its caption displays the localized product `3714990977` price and it toggles only `Frames.Starterpack`. No `Buttons.Right.SkylinePack` clone is created. It blocks during tutorial, deselects from the panel's Close button and is destroyed on HUD replacement.
+
+The offer auto-opens after four minutes and once more 30 minutes after the first reminder, waiting through the tutorial or another open modal rather than interrupting it. It stops after those two offers, and a successful prompt result suppresses the second. That client result affects presentation only; rewards still require the authoritative receipt.
+
+The panel uses the supplied three reward cards and their authored ViewportFrames/sunbursts; the legacy Airport card now displays Petronas Towers. It applies the GuessTheSize timing/amplitudes for background rotation, breathing bursts, staggered reward pops and recursively collected independently drifting/fading/spinning background stars. PurchaseButton now intentionally keeps only the sweeping UIGradient and bounded 1.8-degree periodic shake; hover/press scaling, size pulse and stroke animation were removed. All three models spin around their visible centre at 18 degrees/second from a 180-degree facing correction. Preview cameras fit visible bounds, move gently and use a stronger 0.28 vertical direction to show more top/front surface. Hidden/cleaned HUDs restore motion/input state and destroy generated preview instances. Visual composition and Marketplace prompting still require a Studio/published-game check.
+
+The Military Base preview replaces its static Heli with a sanitized independent viewport copy flying a compact variable-altitude orbit; MainBlades spin on Y and RearRotor on Z. The removed Airport reward's aircraft preview was also removed. The helicopter remains a WorldModel-only cosmetic with no live-world or replication effect.
+
+Local validation is included in the current Shop commerce section above.
+
+## Military Base grid adjacency (2026-09-27)
+
+Placement Geometry now explicitly applies the existing half-grid snap rule to `MilitaryBase`, matching Airport/Stadium. This avoids a 0.5-stud adjacency mismatch when the model's authored Base dimensions do not express its configured odd 5x5 footprint. Collision and land-boundary rules were not loosened.
+
+Airport correction: its authored Base is 8 x 13.5 studs, so the former explicit two-axis half-grid offset misaligned the even side. Airport now offsets only the long Z axis at 0/180 degrees and swaps that offset to X at 90/270 degrees. Server validation remains unchanged.
+
 ## Empty income collection is silent (2026-09-27)
 
 IncomeSystem.Collection no longer fires `ErrorEvent` with "No income to collect!" when the collection total is zero. It simply releases the collection debounce and returns. Ownership/security errors remain visible, and successful collection still credits cash, advances quests/tutorial state and drives the existing cash feedback.
@@ -34,7 +129,7 @@ Local validation: all 46 suites pass, including all five viewport consumers, res
 
 ## Military Base flight and new buildings (2026-09-27)
 
-Added the authored `MilitaryBase` model to Epic and `SkyscraperGeneric` to Legendary. Their catalogue unlocks are 24 rebirths / 125,000 population, with limits 1 / 2. Their 5x5 and 4x4 construction sizes are best-fit assumptions because the synced source does not contain the Studio model dimensions; the existing startup template audit will identify a mismatch. Both omit ImageId; the shop now uses their models directly, while other icon-based surfaces still need real icon assets.
+Added the authored `MilitaryBase` model to Epic and internal `SkyscraperGeneric` model to Legendary under the player-facing name **Apex Tower**. Their catalogue unlocks are 24 rebirths / 125,000 population, with limits 1 / 2. Their 5x5 and 4x4 construction sizes are best-fit assumptions because the synced source does not contain the Studio model dimensions; the existing startup template audit will identify a mismatch. Both omit ImageId; the shop now uses their models directly, while other icon-based surfaces still need real icon assets.
 
 MilitaryHelicopterController renders completed Military Base helicopters entirely on each client. Its sanitized clone flies inside a closer 9-stud default boundary, using smooth deterministic radius/offset/altitude harmonics for tighter/wider and lower/higher passes. Orbit speed is now 0.88/3 rad/s, twice the previous 0.44/3 setting. A +90-degree default yaw corrects the reported left-side-leading orientation; dynamic bank ranges 5-15 degrees and pitch varies +/-4 degrees along the 3D route. Default centre altitude is two studs below the authored Heli height (minimum 8), with smooth variation around it. Every clone BasePart resets LocalTransparencyModifier to zero. Direct Heli children `MainBlades`, `Body` and `RearRotor` remain the preferred layout, with legacy aliases and replication-aware startup. The clone is collisionless, contains no scripts/constraints/prompts, cleans up with the building and does not affect persistence or server replication.
 
@@ -390,3 +485,9 @@ Verify in Play: buy land so a locked tile with its sign borders your city; place
 Symptom: after a lost cancellation or disconnect, every later purchase at the same Robux price was refused with "needs recovery"; receipts with no recorded choice stayed pending forever.
 Fix: prompts archive an unbound old choice instead of refusing; receipts resolve open choice -> archived choice -> equal-value compensation (best building in that Robux tier); overdue blocked steals deliver the saved snapshot after 10 minutes. See AGENTS.md for the exact order.
 Verify in Play (test products): open a building prompt and leave the server before answering, rejoin, and buy a different building at the same price (expect the prompt to open). Buy two buildings at one price in quick succession (expect both granted). Check the Output for "[Receipts] Deferred" warnings.
+# Authored SFX integration (2026-09-27)
+
+- All gameplay/UI audio now resolves from `SoundService.SFX`; the temporary `GuessTheSize` sound-bank integration was completely removed.
+- Specific mappings cover Hover, Click, Swoosh, Notification/NotificationLow, Error, Purchase, Reward, CaChing, PlaceSound, RotateSound, DestroySound, BuildingComplete, Popin, RareBuilding, LegendaryBuilding, StartUp and Ambience.
+- Daily/quest reward audio waits for server confirmation. Rarity notices do not add a generic sound over the RareBuilding/LegendaryBuilding VFX cue, and rebirth does not layer a second completion sound.
+- `Ambience2`, `Construction`, and `Nuke` remain unbound because there is no separate matching gameplay event; forcing them would overlap or misrepresent existing actions.

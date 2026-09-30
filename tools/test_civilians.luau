@@ -6,14 +6,17 @@ local function load(name, env)
 	return luau.load(fs.readFile(basePath .. name .. ".luau"), { environment = env or {} })()
 end
 local config = load("Config")
-assert(config.desired(0) == 0 and config.desired(1) == 1 and config.desired(4) == 2 and config.desired(1000) == 8)
-local quotas = config.allocate({ 8, 8, 8, 8, 8, 8 })
+assert(config.desired(0) == 0 and config.desired(1) == 1 and config.desired(4) == 2)
+assert(config.desired(1, 10, 0) == 3, "Streets did not increase civilian activity")
+assert(config.desired(1, 0, 3600) == 6, "Population did not increase civilian activity")
+assert(config.desired(1000, 1000, 1000000) == 10, "Per-city civilian cap failed")
+local quotas = config.allocate({ 10, 10, 10, 10, 10, 10, 10, 10 })
 local total = 0
 for _, quota in quotas do
-	assert(quota == 4)
+	assert(quota == 10)
 	total += quota
 end
-assert(total == 24)
+assert(total == 80)
 assert(
 	config.AnimationIds.R6.Walk == "rbxassetid://180426354" and config.AnimationIds.R15.Walk == "rbxassetid://507777826"
 )
@@ -69,7 +72,13 @@ model("RoadStraight", placed, road)
 local unfinished = part("Base", r.Vector3.new(-5, 1.3, 0), r.Vector3.new(3, 0.2, 8))
 model("RoadCorner", construction, unfinished)
 local roads = geometry.snapshot(plot)
-assert(#roads.walkways == 1 and #roads.obstacles == 2 and roads.count == 2)
+assert(
+	#roads.walkways == 1
+		and #roads.obstacles == 2
+		and roads.count == 2
+		and roads.buildingCount == 1
+		and roads.roadCount == 1
+)
 assert(geometry.ground(roads, road.CFrame.Position, 0.5), "Finished road blocked civilians")
 assert(not geometry.ground(roads, unfinished.CFrame.Position, 0.5), "Unfinished road must remain blocked")
 assert(not geometry.ground(roads, building.CFrame.Position, 0.5), "Building must remain blocked")
@@ -218,11 +227,11 @@ end
 for _ = 1, 6 do
 	tick()
 end
-assert(spawned == 24 and removed == 0, "Duplicate start or incorrect global cap")
+assert(spawned == 36 and removed == 0, "Duplicate start or incorrect gradual growth")
 plots.Plot1.count = 0
 plots.Plot1.Buildings.Placed.ChildRemoved:Fire({})
 tick()
-assert(removed == 4 and spawned - removed <= 24, "Population failed to shrink")
+assert(removed == 6 and spawned - removed <= 80, "Population failed to shrink")
 players[2].MyCityLeaving = true
 tick()
 local before = removed
@@ -231,7 +240,7 @@ leaving:Fire(players[2])
 assert(removed == before, "Departure cleanup not idempotent")
 plots.Plot3.CityId = 999
 tick()
-assert(spawned - removed <= 24)
+assert(spawned - removed <= 80)
 -- No civilians may remain bound to a city reassigned to someone else.
 local beforeSteps = steps
 for _, player in players do

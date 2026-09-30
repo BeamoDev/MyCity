@@ -44,6 +44,16 @@ function World.start(isClosing)
 	local previews = folder(assets, "BuildingPreviews")
 	local BuildingTemplates = require(script.Parent.Parent.services.BuildingTemplates)
 	local catalogue = require(script.Parent.Parent.config.BuildingConfig)
+	-- Studio may retain the display names on these imported models. Normalize them to
+	-- the stable keys used by tools, placement, persistence and preview lookup.
+	for key, authoredName in { LuxurySkyscraper = "Luxury Skyscraper", BurjKhalifa = "Burj Khalifa" } do
+		if not models:FindFirstChild(key) then
+			local authored = models:FindFirstChild(authoredName)
+			if authored and authored:IsA("Model") then
+				authored.Name = key
+			end
+		end
+	end
 	for _, model in models:GetChildren() do
 		-- Only catalogued buildings; other models kept in this folder (e.g. plot scenery) stay untouched.
 		if model:IsA("Model") and catalogue[model.Name] then

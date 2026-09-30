@@ -7,7 +7,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 require(game:GetService("ReplicatedStorage"):WaitForChild("shared"):WaitForChild("Network")).wait()
 local TweenService = game:GetService("TweenService")
 local SoundService = game:GetService("SoundService")
-local BuildingViewport = require(script.Parent.Parent:WaitForChild("ui"):WaitForChild("BuildingViewport"))
 
 local player = Players.LocalPlayer
 State.playerGui = nil
@@ -41,7 +40,6 @@ local Context = {
 	ReplicatedStorage = ReplicatedStorage,
 	TweenService = TweenService,
 	SoundService = SoundService,
-	BuildingViewport = BuildingViewport,
 	player = player,
 	SellEvents = SellEvents,
 	SellItemEvent = SellItemEvent,

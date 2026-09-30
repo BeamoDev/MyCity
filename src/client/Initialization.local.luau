@@ -3,11 +3,11 @@ require(script.Parent:WaitForChild("bootstrap"):WaitForChild("EarlyLoading")).st
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 require(ReplicatedStorage:WaitForChild("shared"):WaitForChild("Network")).wait()
 local controllers = script.Parent:WaitForChild("controllers")
-local worldControllers = controllers:WaitForChild("world")
 for _, module in
 	{
-		worldControllers:WaitForChild("AmbientTrafficController"),
-		worldControllers:WaitForChild("MilitaryHelicopterController"),
+		controllers:WaitForChild("world"):WaitForChild("AmbientTrafficController"),
+		controllers:WaitForChild("world"):WaitForChild("MilitaryHelicopterController"),
+		controllers:WaitForChild("world"):WaitForChild("RarityRiseController"),
 		controllers:WaitForChild("placement"):WaitForChild("BuildingTools"),
 		controllers.placement:WaitForChild("ExpandHighlight"),
 		controllers:WaitForChild("social"):WaitForChild("ChatTags"),

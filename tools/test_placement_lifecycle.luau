@@ -462,6 +462,21 @@ spatial.getPlayerPlot = function()
 	return node({ Land = node({ Owned = land }) })
 end
 assert(spatial.constrainToPlotBounds(r.Vector3.zero) == r.Vector3.zero)
+spatial.state.plotBounds = { minX = -10, maxX = 10, minZ = -10, maxZ = 10 }
+spatial.tool.Name = "MilitaryBase"
+local militarySnap = spatial.snapToGrid(r.Vector3.zero)
+assert(militarySnap.X == 0.5 and militarySnap.Z == 0.5, "MilitaryBase did not receive its explicit half-grid offset")
+footprint.Size = r.Vector3.new(8, 0.05, 13.5)
+spatial.tool.Name = "Airport"
+spatial.state.rotationAngle = 0
+local airportSnap = spatial.snapToGrid(r.Vector3.zero)
+assert(airportSnap.X == 0 and airportSnap.Z == 0.5, "Airport offset both footprint axes at 0 degrees")
+spatial.state.rotationAngle = 90
+airportSnap = spatial.snapToGrid(r.Vector3.zero)
+assert(airportSnap.X == 0.5 and airportSnap.Z == 0, "Airport offset did not follow its rotated long axis")
+spatial.state.rotationAngle = 0
+spatial.tool.Name = "Bank"
+spatial.state.plotBounds = { minX = -1, maxX = 1, minZ = -1, maxZ = 1 }
 assert(
 	not spatial.isFullyWithinPlotBounds(r.Vector3.new(0, 1.25, 0)),
 	"Preview accepted owned corners with unowned center"

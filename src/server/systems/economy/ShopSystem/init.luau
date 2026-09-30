@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ServerStorage = game:GetService("ServerStorage")
 
 -- Stock configuration
 local STOCK_RANGES = {
@@ -14,6 +15,7 @@ local STOCK_RANGES = {
 	Epic = { min = 2, max = 6, outOfStockChance = 0.35 },
 	Legendary = { min = 1, max = 4, outOfStockChance = 0.45 },
 	Mythic = { min = 0, max = 2, outOfStockChance = 0.6 },
+	Luxury = { min = 1, max = 1, outOfStockChance = 0.7 },
 }
 
 local LIMITED_BUILDINGS = {
@@ -66,6 +68,7 @@ local Context = {
 	MarketplaceService = MarketplaceService,
 	Players = Players,
 	RunService = RunService,
+	ServerStorage = ServerStorage,
 	STOCK_RANGES = STOCK_RANGES,
 	LIMITED_BUILDINGS = LIMITED_BUILDINGS,
 	RESET_INTERVAL = RESET_INTERVAL,

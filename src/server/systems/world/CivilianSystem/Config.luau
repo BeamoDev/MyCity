@@ -1,7 +1,7 @@
 -- KingdomWars animation defaults with a slower city walking pace; counts are cosmetic only.
 local Config = {
-	PerCityLimit = 8,
-	ServerLimit = 24,
+	PerCityLimit = 10,
+	ServerLimit = 80,
 	WalkSpeed = 1.5,
 	PauseMin = 0.35,
 	PauseMax = 0.9,
@@ -17,11 +17,17 @@ local Config = {
 		R15 = { Idle = "rbxassetid://507766666", Walk = "rbxassetid://507777826" },
 	},
 }
-function Config.desired(buildings)
-	if buildings <= 0 then
+function Config.desired(buildings, roads, population)
+	buildings = math.max(0, tonumber(buildings) or 0)
+	roads = math.max(0, tonumber(roads) or 0)
+	population = math.max(0, tonumber(population) or 0)
+	if buildings <= 0 and roads <= 0 and population <= 0 then
 		return 0
 	end
-	return math.min(Config.PerCityLimit, math.max(1, math.floor(buildings / 2)))
+	local development = math.floor(buildings / 3)
+	local streetActivity = math.floor(roads / 5)
+	local residents = math.floor(math.sqrt(population) / 12)
+	return math.min(Config.PerCityLimit, math.max(1, 1 + development + streetActivity + residents))
 end
 -- Share the global budget across cities instead of starving later players.
 function Config.allocate(counts)

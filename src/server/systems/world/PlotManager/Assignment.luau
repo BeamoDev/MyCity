@@ -103,6 +103,5 @@ return function(Context)
 		)
 		root.CFrame = plot:FindFirstChild("PlotSpawn").CFrame
 
-		Context.spawnAllScenery()
 	end
 end

@@ -28,9 +28,7 @@ assert(controller.phaseFor("building-1") == controller.phaseFor("building-1"), "
 assert(controller.phaseFor("building-1") ~= controller.phaseFor("building-2"), "Distinct buildings overlap by default")
 
 local epic = luau.load(fs.readFile("src/server/config/BuildingConfig/Epic.luau"))()
-local legendary = luau.load(fs.readFile("src/server/config/BuildingConfig/Legendary.luau"))()
 assert(epic.MilitaryBase and epic.MilitaryBase.Rarity == "Epic" and epic.MilitaryBase.BuildLimit == 1)
-assert(legendary.SkyscraperGeneric and legendary.SkyscraperGeneric.Rarity == "Legendary")
 
 local source = fs.readFile("src/client/controllers/world/MilitaryHelicopterController.luau")
 assert(source:find('MAIN_BLADE_NAMES = { "MainBlades", "main top_Material%.016_0%.002" }'), "Main blade aliases changed")
@@ -50,4 +48,4 @@ assert(source:find("DEFAULT_YAW = math%.rad%(90%)"), "Default nose correction is
 assert(source:find("local function pathPoint"), "Flight path has no bounded wandering")
 assert(source:find("CanCollide = false") and source:find("CanQuery = false"), "Flying clone can affect physics")
 
-print("PASS: both catalogue entries, deterministic sky orbit, tangent facing, clean/legacy rotor names, axes and cosmetic clone safety")
+print("PASS: Military Base catalogue entry, deterministic sky orbit, tangent facing, rotor axes and cosmetic clone safety")

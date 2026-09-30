@@ -1,6 +1,14 @@
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local r = require("@lune/roblox")
+
+local rarityVfx = fs.readFile("src/server/systems/world/VFX.luau")
+local constructionCompletion =
+	fs.readFile("src/server/systems/construction/ConstructionSystem/ConstructionTimer/Completion.luau")
+local chatTagsSource = fs.readFile("src/client/controllers/social/ChatTags.luau")
+assert(rarityVfx:find('Epic = { flag = "FirstEpic"', 1, true), "Epic milestone/VFX mapping missing")
+assert(constructionCompletion:find("VFX.CheckAndPlayRarityEffect(player, newBuilding, rarity)", 1, true))
+assert(chatTagsSource:find("rarityColors[rarity]", 1, true), "Rarity announcements are not color-mapped")
 local environment = { Instance = r.Instance }
 local codec =
 	luau.load(fs.readFile("src/server/persistence/PlayerDataModule/ProfileCodec.luau"), { environment = environment })()
@@ -121,7 +129,12 @@ local scriptMock = {
 	DataSchema = schema,
 	SchemaMigration = migrate,
 	SessionStore = store,
-	Parent = { Parent = { systems = { security = { RequestGuard = {} } } } },
+	Parent = { Parent = { systems = {
+		security = { RequestGuard = {} },
+		world = { CityNameSystem = { sanitizeProfileName = function(_, data)
+			data.PlayerInfo.CityNameFiltered.Value = true
+		end } },
+	} } },
 }
 local loader = luau.load(fs.readFile("src/server/persistence/PlayerDataModule/init.luau"), {
 	environment = {
@@ -169,7 +182,12 @@ local quests = { PostTutorialQuest = {}, playerStates = {}, placedBuildingIds = 
 luau.load(fs.readFile("src/server/systems/progression/PostTutorialQuest/Lifecycle.luau"))()(quests)
 quests.PostTutorialQuest.initializePlayer(missing)
 local plot = { State = {}, PlotManager = {}, plotsFolder = {} }
-luau.load(fs.readFile("src/server/systems/world/PlotManager/Reset.luau"))()(plot)
+luau.load(fs.readFile("src/server/systems/world/PlotManager/Reset.luau"), {
+	environment = {
+		script = { Parent = { Parent = { EmptyPlotPresentation = function() end } } },
+		require = function(module) return module end,
+	},
+})()(plot)
 plot.PlotManager.resetPlot(missing)
 print("PASS: failed-data rebirth/quest initialization and plot cleanup return without waiting")
 
@@ -284,6 +302,14 @@ for join = 1, 2 do
 	)
 	assert(#owner.Data.Inventory:GetChildren() == 0 and #owner.Data.CurrentBuildings:GetChildren() == 0)
 	assert(owner.Data.PlayerInfo.Tutorial.IsInTutorial.Value and owner.Data.PlayerInfo.Tutorial.ServerStage.Value == 0)
+	assert(
+		not owner.Data.PlayerInfo.FirstRare.Value
+			and not owner.Data.PlayerInfo.FirstEpic.Value
+			and not owner.Data.PlayerInfo.FirstLegendary.Value
+			and not owner.Data.PlayerInfo.FirstMythic.Value
+			and not owner.Data.PlayerInfo.FirstLuxury.Value,
+		"Owner fresh start did not re-arm first-rarity VFX"
+	)
 	assert(liveLoader.getRecord(owner).Receipts.paid.Complete, "Fresh start cleared purchase receipt history")
 	owner.leaderstats.Cash.Value = 999999
 	assert(liveLoader.savePlayerData(owner, true))

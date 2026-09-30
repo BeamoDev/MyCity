@@ -18,7 +18,7 @@ return function(Context)
 		-- Handle shop data requests
 		ShopEvent.OnServerEvent:Connect(function(player, action)
 			if action == "RequestShopData" then
-				Context.sendShopUpdate(player)
+				Guard.run(player, "ShopData", Context.sendShopUpdate)
 			end
 		end)
 

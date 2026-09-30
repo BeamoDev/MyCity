@@ -2,7 +2,7 @@ local Geometry = {}
 function Geometry.snapshot(plot)
 	local land, buildings = plot:FindFirstChild("Land"), plot:FindFirstChild("Buildings")
 	local owned = land and land:FindFirstChild("Owned")
-	local result = { tiles = {}, obstacles = {}, buildings = {}, walkways = {}, count = 0 }
+	local result = { tiles = {}, obstacles = {}, buildings = {}, walkways = {}, count = 0, buildingCount = 0, roadCount = 0 }
 	if owned then
 		for _, tile in owned:GetChildren() do
 			if tile:IsA("BasePart") then
@@ -21,6 +21,12 @@ function Geometry.snapshot(plot)
 					local base = model:FindFirstChild("Base") or model:FindFirstChild("Hitbox")
 					if name == "Placed" then
 						result.count += 1
+						local buildingType = model:GetAttribute("BuildingType") or model.Name
+						if buildingType:match("^Road") then
+							result.roadCount += 1
+						else
+							result.buildingCount += 1
+						end
 					end
 					if base and base:IsA("BasePart") then
 						local buildingType = model:GetAttribute("BuildingType") or model.Name

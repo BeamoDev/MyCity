@@ -109,6 +109,7 @@ return function(Context)
 			for _, plot in ipairs(plotsFolder:GetChildren()) do
 				local plotNum = tonumber(plot.Name:match("Plot(%d+)")) or 0
 				local assignedPlayer = plotOwners[plotNum]
+				local occupied = assignedPlayer ~= nil and assignedPlayer.Parent ~= nil
 
 				local PlotCollect = plot.UI:FindFirstChild("CollectIncome")
 				if PlotCollect then
@@ -117,12 +118,11 @@ return function(Context)
 
 					-- Handle button appearance and particles based on assignment
 					if button then
-						if assignedPlayer and assignedPlayer.Parent then
+						if occupied then
 							-- Player assigned - make button green and visible
 							button.Color = Color3.fromRGB(0, 255, 0)
 							button.Transparency = 0
 						else
-							-- No player - make button gray and semi-transparent
 							button.Color = Color3.fromRGB(218, 218, 218)
 							button.Transparency = 0.6
 						end
@@ -135,7 +135,7 @@ return function(Context)
 							local flare = attachment:FindFirstChild("Flare")
 							local wave = attachment:FindFirstChild("Wave")
 
-							if assignedPlayer and assignedPlayer.Parent then
+							if occupied then
 								-- Enable particles when player assigned
 								if flare then
 									flare.Enabled = true
@@ -158,8 +158,9 @@ return function(Context)
 					-- Handle income display
 					local surfaceGui = button and button:FindFirstChild("ButtonInfo")
 					if surfaceGui then
+						surfaceGui.Enabled = occupied
 						local incomeLabel = surfaceGui:FindFirstChild("IncomeAvailable")
-						if incomeLabel and assignedPlayer and assignedPlayer.Parent then
+						if incomeLabel and occupied then
 							local playerInfo = assignedPlayer:FindFirstChild("Data")
 								and assignedPlayer.Data:FindFirstChild("PlayerInfo")
 							local availableIncome = playerInfo and playerInfo:FindFirstChild("AvailableIncome")
@@ -179,7 +180,7 @@ return function(Context)
 								incomeLabel.Text = "$0"
 							end
 						elseif incomeLabel then
-							incomeLabel.Text = "Unassigned"
+							incomeLabel.Text = ""
 						end
 					end
 				end
@@ -196,7 +197,7 @@ return function(Context)
 							if frame then
 								local cityNameLabel = frame:FindFirstChild("CityName")
 								if cityNameLabel then
-									if assignedPlayer and assignedPlayer.Parent then
+									if occupied then
 										local savedCityName = nil
 										if State.CityNameSystem then
 											savedCityName = State.CityNameSystem.getCityName(assignedPlayer)
@@ -208,7 +209,7 @@ return function(Context)
 											cityNameLabel.Text = assignedPlayer.Name .. "'s City!"
 										end
 									else
-										cityNameLabel.Text = "Unassigned"
+										cityNameLabel.Text = "Nothing"
 									end
 								end
 

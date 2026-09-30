@@ -16,16 +16,16 @@ return function(Context)
 		local totalIncome = IncomeSystem.calculateAndStackBuildingIncome(player)
 
 		if totalIncome > 0 then
+			local leaderstats = player:FindFirstChild("leaderstats")
+			local Cash = leaderstats and leaderstats:FindFirstChild("Cash")
+			if not Cash then
+				return false
+			end
 			-- Apply 2x cash gamepass multiplier
 			if doubleCash then
 				totalIncome = totalIncome * 2
 			end
-
-			local leaderstats = player:FindFirstChild("leaderstats")
-			local Cash = leaderstats and leaderstats:FindFirstChild("Cash")
-			if Cash then
-				Cash.Value = Cash.Value + totalIncome
-			end
+			Cash.Value = Cash.Value + totalIncome
 
 			IncomeSystem.resetBuildingIncome(player)
 		end
@@ -86,6 +86,29 @@ return function(Context)
 		end
 	end
 
+	local function animateCollectionButton(plotNumber)
+		local plot = Workspace.Plots:FindFirstChild("Plot" .. plotNumber)
+		local ui = plot and plot:FindFirstChild("UI")
+		local collection = ui and ui:FindFirstChild("CollectIncome")
+		local button = collection and collection:FindFirstChild("Button")
+		if not (button and button:IsA("BasePart")) then return end
+
+		local fixedPosition = button.Position
+		local downTween = TweenService:Create(button, tweenInfo, { Position = fixedPosition + Vector3.new(0, -0.3, 0) })
+		local upTween = TweenService:Create(button, tweenInfo, { Position = fixedPosition })
+		local pressSound = button:FindFirstChild("Pressed")
+		local releaseSound = button:FindFirstChild("Released")
+		if pressSound then pressSound:Play() end
+		downTween:Play()
+		task.spawn(function()
+			downTween.Completed:Wait()
+			if releaseSound then releaseSound:Play() end
+			upTween:Play()
+			upTween.Completed:Wait()
+			button.Position = fixedPosition
+		end)
+	end
+
 	function Context.handleIncomeCollection(player, plotNumber)
 		local debounceKey = player.UserId .. "_collection"
 		local expires = tonumber(buttonDebounces[debounceKey]) or 0
@@ -109,6 +132,7 @@ return function(Context)
 			buttonDebounces[debounceKey] = false
 			return
 		end
+		animateCollectionButton(plotNumber)
 
 		local doubleCash = Context.hasDoubleCashGamepass(player)
 		local totalIncome = IncomeSystem.calculateAndStackBuildingIncome(player)
@@ -124,10 +148,12 @@ return function(Context)
 		end
 
 		local leaderstats = player:FindFirstChild("leaderstats")
-		local Cash = leaderstats:FindFirstChild("Cash")
-		if Cash then
-			Cash.Value = Cash.Value + totalIncome
+		local Cash = leaderstats and leaderstats:FindFirstChild("Cash")
+		if not Cash then
+			buttonDebounces[debounceKey] = false
+			return
 		end
+		Cash.Value = Cash.Value + totalIncome
 
 		-- Cash credit and income reset belong together, before optional quest/UI work.
 		IncomeSystem.resetBuildingIncome(player)
@@ -140,40 +166,6 @@ return function(Context)
 
 		require(script.Parent.Parent.Parent.progression.TutorialSystem).handleIncomeCollection(player)
 		collectIncomeEvent:FireClient(player, totalIncome)
-
-		local plot = Workspace.Plots:FindFirstChild("Plot" .. plotNumber)
-		if plot then
-			local UI = plot:FindFirstChild("UI") and plot.UI:FindFirstChild("CollectIncome")
-			if UI then
-				local button = UI:FindFirstChild("Button")
-				if button then
-					local fixedPosition = button.Position
-					local clickOffset = Vector3.new(0, -0.3, 0)
-
-					local pressSound = button:FindFirstChild("Pressed")
-					local releaseSound = button:FindFirstChild("Released")
-
-					if pressSound and releaseSound then
-						local downGoal = { Position = fixedPosition + clickOffset }
-						local upGoal = { Position = fixedPosition }
-
-						local downTween = TweenService:Create(button, tweenInfo, downGoal)
-						local upTween = TweenService:Create(button, tweenInfo, upGoal)
-
-						pressSound:Play()
-						downTween:Play()
-
-						task.spawn(function()
-							downTween.Completed:Wait()
-							releaseSound:Play()
-							upTween:Play()
-							upTween.Completed:Wait()
-							button.Position = fixedPosition
-						end)
-					end
-				end
-			end
-		end
 
 		-- The timestamp debounce expires without holding the player mutation lock.
 	end

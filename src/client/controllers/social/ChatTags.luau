@@ -62,22 +62,24 @@ function Controller.start()
 	local function setupRarityAnnouncements()
 		local rarityEvent = ReplicatedStorage.Events.Notifications.RarityAnnounce
 
-		rarityEvent.OnClientEvent:Connect(function(rarity, buildingName, playerName)
+		local rarityColors = require(ReplicatedStorage.shared.ui.RarityColors)
+		rarityEvent.OnClientEvent:Connect(function(rarity, buildingName, playerName, ownerReplay)
 			local textChannel = TextChatService.TextChannels:FindFirstChild("RBXGeneral")
 			if not textChannel then
 				return
 			end
 
-			local message = ""
-			local color = ""
-
-			if rarity == "Rare" then
-				color = "rgb(212, 0, 212)"
-				message = string.format("%s unlocked their first RARE building: %s!", playerName, buildingName)
-			elseif rarity == "Legendary" then
-				color = "rgb(255, 215, 0)"
-				message = string.format("%s unlocked their first LEGENDARY building: %s!", playerName, buildingName)
-			end
+			local rarityColor = rarityColors[rarity]
+			if not rarityColor then return end
+			local color = string.format(
+				"rgb(%d, %d, %d)",
+				math.round(rarityColor.R * 255),
+				math.round(rarityColor.G * 255),
+				math.round(rarityColor.B * 255)
+			)
+			local message = if ownerReplay
+				then string.format("%s completed a %s building: %s!", playerName, string.upper(rarity), buildingName)
+				else string.format("%s unlocked their first %s building: %s!", playerName, string.upper(rarity), buildingName)
 
 			textChannel:DisplaySystemMessage(
 				"<font color='"

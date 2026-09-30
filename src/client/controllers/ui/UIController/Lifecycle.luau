@@ -36,6 +36,7 @@ return function(Context)
 		State.DailyRewardFrame = State.FramesFolder:FindFirstChild("DailyReward")
 		State.weatherFrame = State.playerGui.Weather
 		State.BuilderPackFrame = State.FramesFolder.BuilderPack
+		Context.setupBuilderPackPrice()
 
 		Context.setupConstructionDisplay()
 		Context.setupSettingsControls()
@@ -44,7 +45,6 @@ return function(Context)
 		Context.setupTravelButtons()
 		Context.setupMobileScale()
 		Context.connectButtonEvents()
-		Context.setupBuilderPackAttention()
 		Context.connectRemoteEvents()
 		Context.setupBuildingDataUI()
 		Context.updateCashDisplay()
@@ -75,7 +75,6 @@ return function(Context)
 
 	function UIController.cleanup()
 		Context.connections:clear()
-		Context.cleanupBuilderPackAttention()
 		Context.cleanupPresentation()
 		Context.cleanupQuestUI()
 		Context.cleanupDailyQuests()

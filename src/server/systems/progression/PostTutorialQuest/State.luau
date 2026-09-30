@@ -61,7 +61,7 @@ return function(Context)
 		return count
 	end
 
-	local RARITY_RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6 }
+	local RARITY_RANK = { Common = 1, Uncommon = 2, Rare = 3, Epic = 4, Legendary = 5, Mythic = 6, Luxury = 7 }
 
 	-- Non-road buildings in the city whose rarity is at least minRarity.
 	function Context.countRarity(player, minRarity)

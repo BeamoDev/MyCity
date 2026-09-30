@@ -9,7 +9,9 @@ function Validation.getPlot(player)
 	local data = player:FindFirstChild("Data")
 	local info = data and data:FindFirstChild("PlotInfo")
 	local number = info and info:FindFirstChild("Plot")
-	return number and Workspace.Plots:FindFirstChild("Plot" .. number.Value)
+	local plot = number and Workspace.Plots:FindFirstChild("Plot" .. number.Value)
+	return if plot and plot:GetAttribute("Assigned") == true and tonumber(plot:GetAttribute("CityId")) == player.UserId
+		then plot else nil
 end
 
 function Validation.ownsBuilding(player, building)

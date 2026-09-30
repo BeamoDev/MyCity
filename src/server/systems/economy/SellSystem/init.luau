@@ -14,12 +14,14 @@ local BASE_PROFIT_MARGINS = {
 	Common = 1.15,
 	Rare = 1.25,
 	Legendary = 1.35,
+	Luxury = 1.35,
 }
 
 local LEVEL_VALUE_SCALING = {
 	Common = 0.08,
 	Rare = 0.12,
 	Legendary = 0.18,
+	Luxury = 0.18,
 }
 
 local XP_VALUE_SCALING = 0.05
